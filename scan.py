@@ -764,7 +764,7 @@ def main():
             "item_hash": item_hash(item["title"], url or ""),
             "title": item["title"],
             "url": url,
-            "date": item.get("date"),
+            "date": normalize_date(item.get("date")),
             "service_name": item["service_name"],
             "content": content,
         }
