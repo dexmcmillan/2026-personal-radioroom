@@ -1,7 +1,7 @@
 """
 Police Scout — Daily police press release digest generator.
-Scrapes press release listing pages for 34 Canadian police services,
-deduplicates, and publishes a static HTML digest via GitHub Pages.
+Scrapes press release listing pages for Canadian police services,
+deduplicates via PostgreSQL, and publishes a static HTML digest.
 """
 
 import csv
@@ -9,22 +9,21 @@ import hashlib
 import json
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
-from urllib.parse import urljoin, urlparse
 
 import requests
 import urllib3
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 
+import db
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- Paths ---
 
 BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / "data"
 DOCS_DIR = BASE_DIR / "docs"
 TEMPLATE_DIR = BASE_DIR / "templates"
-STATE_FILE = DATA_DIR / "seen_items.json"
 SOURCES_FILE = BASE_DIR / "sources.csv"
 
 USER_AGENT = (
@@ -38,26 +37,6 @@ def item_hash(title: str, url: str) -> str:
     """Return MD5 hex digest of 'title|url' (both stripped)."""
     raw = title.strip() + "|" + url.strip()
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
-
-
-def load_state() -> dict:
-    """Load seen-items state from JSON. Return empty dict if missing."""
-    if STATE_FILE.exists():
-        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
-    return {}
-
-
-def save_state(state: dict) -> None:
-    """Write state to JSON unconditionally."""
-    DATA_DIR.mkdir(parents=True, exist_ok=True)
-    STATE_FILE.write_text(json.dumps(state, indent=2), encoding="utf-8")
-
-
-def prune_state(state: dict, today: date) -> dict:
-    """Remove entries older than 30 calendar days before today."""
-    cutoff = today - timedelta(days=30)
-    cutoff_str = cutoff.isoformat()
-    return {k: v for k, v in state.items() if v[:10] >= cutoff_str}
 
 
 def load_sources() -> list[dict]:
@@ -94,6 +73,7 @@ PRESS_RELEASE_KEYWORDS = (
 
 def is_press_release_url(url: str) -> bool:
     """Return True if the URL path contains at least one press-release keyword."""
+    from urllib.parse import urlparse
     path = urlparse(url).path.lower()
     return any(kw in path for kw in PRESS_RELEASE_KEYWORDS)
 
@@ -173,6 +153,7 @@ def extract_links_by_selector(
     date_selector: str,
 ) -> list[dict]:
     """Extract links using a specific CSS selector."""
+    from urllib.parse import urljoin
     results = []
     seen_urls = set()
     for a in soup.select(link_selector):
@@ -212,6 +193,7 @@ def extract_links(soup: BeautifulSoup, base_url: str) -> list[dict]:
     Links are further filtered to those whose URL path contains at least
     one press-release-style keyword (news, release, media, press, etc.).
     """
+    from urllib.parse import urljoin
 
     def is_valid_href(href: str | None) -> bool:
         if not href:
@@ -261,8 +243,6 @@ def extract_links(soup: BeautifulSoup, base_url: str) -> list[dict]:
 
 
 # Sites that use JS rendering and can't be scraped for content via static HTML.
-# OPP content is fetched via API in fetch_opp_items() instead.
-# Edmonton has a custom fetcher below.
 _JS_RENDERED_HOSTS = {
     "www.opp.ca",
 }
@@ -363,7 +343,6 @@ def _clean_hamilton_content(text: str, title: str) -> str:
     import re as _re
 
     # Strip header: everything up to and including the repeated title line.
-    # The title appears verbatim after the date/timezone metadata.
     if title:
         escaped = _re.escape(title.strip())
         text = _re.sub(r"^.*?" + escaped + r"\n", "", text, count=1, flags=_re.DOTALL)
@@ -386,6 +365,7 @@ def fetch_release_content(url: str) -> str | None:
     (<article>, <main>, .content, .entry-content, etc.). Falls back to <body>.
     Returns None on network error, JS-rendered sites, or if no usable text is found.
     """
+    from urllib.parse import urlparse
     host = urlparse(url).hostname or ""
     if host in _JS_RENDERED_HOSTS:
         return None
@@ -436,92 +416,6 @@ def fetch_release_content(url: str) -> str | None:
                 return text.strip()
 
     return None
-
-
-def _fetch_opp_content_for_entry(entry_id: str) -> str | None:
-    """
-    Fetch content for a single OPP entry via the Proton API by entry ID.
-    Returns plain text or None on failure.
-    """
-    import json as _json
-    import re as _re
-
-    payload = {
-        "returnData": _json.dumps({"data.content": "1"}),
-        "findData": _json.dumps({"id": entry_id}),
-        "limit": 1,
-        "skip": 0,
-    }
-    try:
-        resp = requests.post(
-            OPP_API_URL,
-            json=payload,
-            timeout=20,
-            headers={"User-Agent": USER_AGENT},
-            verify=False,
-        )
-        resp.raise_for_status()
-        data = resp.json()
-    except Exception:
-        return None
-
-    if not data:
-        return None
-    raw_html = (data[0].get("data") or {}).get("content", "") or ""
-    if not raw_html:
-        return None
-    text = BeautifulSoup(raw_html, "html.parser").get_text(separator="\n", strip=True)
-    text = _re.sub(r"\n{3,}", "\n\n", text)
-    return text.strip() if len(text) > 50 else None
-
-
-def backfill_content(archive_dir: Path) -> None:
-    """
-    For every item in the archive that has no 'content' field, fetch and store it.
-
-    Processes all *.json files in archive_dir. Modifies files in-place.
-    Skips items whose URL is None or empty.
-    Adds a small delay between requests to be polite.
-    OPP items are fetched via the Proton API per-entry rather than HTML scraping.
-    """
-    import time
-
-    archive_files = sorted(archive_dir.glob("*.json"))
-    total_fetched = 0
-    total_skipped = 0
-
-    for path in archive_files:
-        try:
-            items: list[dict] = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as e:
-            print(f"  [backfill_content] WARNING: could not read {path.name}: {e}")
-            continue
-
-        missing = [i for i, item in enumerate(items) if not item.get("content") and item.get("url")]
-        if not missing:
-            continue
-
-        print(f"  [backfill_content] {path.name}: fetching content for {len(missing)} item(s)...")
-        modified = False
-        for idx in missing:
-            url = items[idx]["url"]
-            if urlparse(url).hostname == "www.opp.ca":
-                entry_id = url.rstrip("/").split("/")[-1]
-                content = _fetch_opp_content_for_entry(entry_id)
-            else:
-                content = fetch_release_content(url)
-            if content:
-                items[idx]["content"] = content
-                modified = True
-                total_fetched += 1
-            else:
-                total_skipped += 1
-            time.sleep(0.5)
-
-        if modified:
-            path.write_text(json.dumps(items, ensure_ascii=False, indent=2), encoding="utf-8")
-
-    print(f"  [backfill_content] Done: {total_fetched} fetched, {total_skipped} failed/empty")
 
 
 OPP_API_URL = "https://www.opp.ca/protonapi/entry/list/"
@@ -644,6 +538,7 @@ def fetch_vpd_items(per_page: int = 100) -> list[dict]:
 
 def fetch_winnipeg_items(soup: BeautifulSoup | None = None) -> list[dict]:
     """Fetch Winnipeg Police Service news releases from listing page (or a pre-parsed soup)."""
+    from urllib.parse import urljoin
     if soup is None:
         resp = requests.get(
             WINNIPEG_NEWS_URL,
@@ -691,6 +586,7 @@ def extract_links_title_from_heading(
     - URL comes from the first <a href> inside it
     - Date comes from a <time datetime="..."> attribute if present
     """
+    from urllib.parse import urljoin
     results = []
     seen_titles = set()
     for item in soup.select(item_selector):
@@ -726,6 +622,7 @@ def scrape_site(
     Returns (items, error_message). On success, error_message is None.
     Each item is {title, url, date, service_name}.
     """
+    from urllib.parse import urljoin, urlparse
     try:
         # Special cases: sites that require custom fetching
         if "opp.ca" in url:
@@ -760,6 +657,7 @@ def scrape_site(
                 "url": lnk["url"],
                 "date": lnk.get("date"),
                 "service_name": service_name,
+                "content": lnk.get("content"),
             }
             for lnk in raw_links[:10]
         ]
@@ -768,200 +666,21 @@ def scrape_site(
         return [], str(e)
 
 
-# --- Archive persistence ---
-
-
-def _service_name_to_filename(service_name: str) -> str:
-    """Convert a service name to a slug suitable for use as a filename."""
-    import re as _re
-    slug = service_name.lower().strip()
-    slug = _re.sub(r"[^a-z0-9]+", "-", slug)
-    slug = slug.strip("-")
-    return slug + ".json"
-
-
-def persist_to_archive(new_items: list[dict], archive_dir: Path) -> None:
-    """
-    Append newly scraped items to their per-service archive JSON files.
-
-    Each file is named after the service (slugified) and contains a list of
-    {title, url, date, service_name} dicts. Existing entries are preserved;
-    new ones are prepended so the file stays newest-first.
-    Deduplication is by URL.
-    """
-    archive_dir.mkdir(parents=True, exist_ok=True)
-
-    # Group new items by service
-    by_service: dict[str, list[dict]] = {}
-    for item in new_items:
-        by_service.setdefault(item["service_name"], []).append(item)
-
-    for service_name, items in by_service.items():
-        filename = _service_name_to_filename(service_name)
-        path = archive_dir / filename
-
-        # Load existing entries
-        existing: list[dict] = []
-        if path.exists():
-            try:
-                existing = json.loads(path.read_text(encoding="utf-8"))
-            except Exception as e:
-                print(f"  [persist_to_archive] WARNING: could not read {filename}: {e}")
-
-        existing_urls = {e.get("url") for e in existing}
-        # CK incidents share a URL per daily release; dedup by (title, url) instead
-        existing_ck_keys = {(e.get("title"), e.get("url")) for e in existing}
-
-        # Prepend new items (skip any already present by URL)
-        to_add = []
-        for i in items:
-            if i["url"] in existing_urls and service_name != "Chatham-Kent Police Service":
-                continue
-            # Use pre-fetched content (e.g. from OPP API) if available, otherwise scrape
-            content = i.get("content") or (fetch_release_content(i["url"]) if i.get("url") else None)
-            if content and i["service_name"] == "Hamilton Police Service":
-                content = _clean_hamilton_content(content, i["title"])
-            base = {
-                "title": i["title"],
-                "url": i["url"],
-                "date": i.get("date"),
-                "service_name": i["service_name"],
-                "content": content,
-            }
-            if service_name == "Chatham-Kent Police Service":
-                # Split daily omnibus releases into per-incident items
-                for incident in split_ck_daily_release(base):
-                    if (incident["title"], incident["url"]) not in existing_ck_keys:
-                        to_add.append(incident)
-            else:
-                to_add.append(base)
-
-        if not to_add:
-            continue
-
-        merged = to_add + existing
-        path.write_text(json.dumps(merged, ensure_ascii=False, indent=2), encoding="utf-8")
-        print(f"  [persist_to_archive] {filename}: added {len(to_add)} item(s) ({len(merged)} total)")
-
-
 # --- Feed builder ---
 
 
-def _load_archive_items(archive_dir: Path, cutoff: date, state: dict | None = None) -> list[dict]:
+def build_feed(conn, output_dir: Path, days: int = 365) -> None:
     """
-    Load all press release items from archive/*.json files.
-    Normalizes dates to ISO YYYY-MM-DD, filters to on/after cutoff.
-    Malformed JSON files are skipped with a warning.
-    When state is provided, items missing a scraped date fall back to
-    their first-seen timestamp from the state dict.
-    """
-    items = []
-    for path in archive_dir.glob("*.json"):
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except Exception as e:
-            print(f"  [build_feed] WARNING: skipping malformed archive {path.name}: {e}")
-            continue
-        for entry in raw:
-            scraped_date = normalize_date(entry.get("date"))
-            # Determine whether this item falls within the cutoff window.
-            # Items with no scraped date are always included (we can't filter them out).
-            if scraped_date is not None and scraped_date < cutoff.isoformat():
-                continue
-            # For display: fall back to first_scraped field, then state, when scraped date is missing.
-            display_date = scraped_date
-            if display_date is None:
-                display_date = entry.get("first_scraped") or None
-            if display_date is None and state is not None:
-                h = item_hash(entry.get("title", ""), entry.get("url") or "")
-                first_seen = state.get(h)
-                if first_seen:
-                    display_date = first_seen[:10]
-            title = (entry.get("title") or "").lower()
-            source = (entry.get("service_name") or "").lower()
-            content = entry.get("content") or None
-            items.append({
-                "type": "press_release",
-                "title": entry.get("title", ""),
-                "url": entry.get("url"),
-                "date": display_date,
-                "source": entry.get("service_name", ""),
-                "content": content,
-                "search_text": " ".join(filter(None, [title, source, (content or "").lower()])),
-                "_sort_key": display_date or "",
-            })
-    return items
-
-
-def _load_tps_items(tps_ndjson: Path, cutoff: date) -> list[dict]:
-    """
-    Load TPS call records from the NDJSON log.
-    Returns empty list with a warning if the file does not exist.
-    """
-    if not tps_ndjson.exists():
-        print(f"  [build_feed] WARNING: TPS NDJSON not found at {tps_ndjson}, skipping TPS data")
-        return []
-    items = []
-    with tps_ndjson.open(encoding="utf-8") as f:
-        for lineno, line in enumerate(f, 1):
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                rec = json.loads(line)
-            except Exception as e:
-                print(f"  [build_feed] WARNING: skipping malformed TPS line {lineno}: {e}")
-                continue
-            occurred_at = rec.get("occurred_at")
-            if not occurred_at:
-                continue
-            iso_date = occurred_at[:10]
-            if iso_date < cutoff.isoformat():
-                continue
-            call_type = (rec.get("call_type") or "").lower()
-            division = (rec.get("division") or "").lower()
-            cross_streets = (rec.get("cross_streets") or "").lower()
-            items.append({
-                "type": "tps_call",
-                "title": rec.get("call_type", ""),
-                "call_type": rec.get("call_type", ""),
-                "url": None,
-                "date": iso_date,
-                "occurred_at": occurred_at,
-                "source": "Toronto Police Service",
-                "division": rec.get("division", ""),
-                "cross_streets": rec.get("cross_streets", ""),
-                "search_text": " ".join(filter(None, [
-                    call_type,
-                    "toronto police service",
-                    division,
-                    cross_streets,
-                ])),
-                "_sort_key": occurred_at,
-            })
-    return items
-
-
-def build_feed(
-    archive_dir: Path,
-    tps_ndjson: Path,
-    output_dir: Path,
-    days: int = 7,
-) -> None:
-    """
-    Build the card feed: merge press releases + TPS calls, write docs/data.json
-    and render docs/index.html from templates/feed.html.
-
-    Errors (missing files, malformed JSON) are logged and skipped gracefully.
+    Build the card feed: query DB for press releases + TPS calls, write
+    docs/data.json and render docs/index.html from templates/feed.html.
     """
     cutoff = date.today() - timedelta(days=days)
     print(f"  [build_feed] Cutoff: {cutoff} ({days} days)")
 
-    state = load_state()
-    press_items = _load_archive_items(archive_dir, cutoff, state=state)
+    press_items = db.load_press_releases(conn, cutoff)
     print(f"  [build_feed] Press releases in window: {len(press_items)}")
 
-    tps_items = _load_tps_items(tps_ndjson, cutoff)
+    tps_items = db.load_tps_calls(conn, cutoff)
     print(f"  [build_feed] TPS calls in window: {len(tps_items)}")
 
     all_items = press_items + tps_items
@@ -980,7 +699,7 @@ def build_feed(
 
     from zoneinfo import ZoneInfo
     now_et = datetime.now(ZoneInfo("America/Toronto"))
-    et_label = now_et.strftime("%Z")  # "EDT" or "EST"
+    et_label = now_et.strftime("%Z")
     generated_at = now_et.strftime(f"%B %d, %Y at %H:%M {et_label}")
     sources = sorted({item["source"] for item in press_items if item.get("source")})
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
@@ -994,6 +713,7 @@ def build_feed(
     index_path.write_text(html, encoding="utf-8")
     print(f"  [build_feed] Wrote {index_path}")
 
+
 # --- Main ---
 
 
@@ -1001,17 +721,15 @@ def main():
     today_utc = datetime.now(timezone.utc).date()
     print(f"Police Scout — {today_utc}")
 
-    # Load state
-    state = load_state()
-    print(f"Loaded state: {len(state)} seen items")
+    conn = db.get_connection()
+    db.init_schema(conn)
 
-    # Load sources
     sources = load_sources()
     print(f"Loaded {len(sources)} sources")
 
-    # Scrape
-    all_new_items = []
-    failed_services = []
+    # Scrape all sources
+    all_scraped: list[dict] = []
+    failed_services: list[str] = []
 
     for source in sources:
         print(f"  Scraping {source['name']}...", end=" ")
@@ -1025,52 +743,50 @@ def main():
             print(f"FAILED: {error}")
             failed_services.append(source["name"])
             continue
-        # Deduplicate against state
-        new_items = [
-            item for item in items
-            if item_hash(item["title"], item["url"]) not in state
-        ]
-        print(f"{len(items)} links found, {len(new_items)} new")
-        all_new_items.extend(new_items)
+        print(f"{len(items)} links found")
+        all_scraped.extend(items)
 
-    print(f"\nTotal new items: {len(all_new_items)}")
-    print(f"Failed services: {len(failed_services)}")
+    # Batch dedup: one DB query for all scraped hashes
+    all_hashes = [item_hash(i["title"], i["url"] or "") for i in all_scraped]
+    known = db.get_known_hashes(conn, all_hashes)
+    new_items = [i for i in all_scraped if item_hash(i["title"], i["url"] or "") not in known]
+    print(f"\nScraped: {len(all_scraped)}, new: {len(new_items)}, failed services: {len(failed_services)}")
 
-    # Group by service, alphabetical
-    services_map: dict[str, list] = {}
-    for item in all_new_items:
-        services_map.setdefault(item["service_name"], []).append(
-            {"title": item["title"], "url": item["url"], "date": item.get("date")}
-        )
-    services_list = [
-        {"name": name, "items": items}
-        for name, items in sorted(services_map.items())
-    ]
+    # Fetch content and expand CK daily releases into per-incident items
+    to_insert: list[dict] = []
+    for item in new_items:
+        url = item.get("url")
+        content = item.get("content") or (fetch_release_content(url) if url else None)
+        if content and item["service_name"] == "Hamilton Police Service":
+            content = _clean_hamilton_content(content, item["title"])
 
-    # Update state: prune first, then merge new hashes
-    state = prune_state(state, today_utc)
-    now_ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
-    for item in all_new_items:
-        h = item_hash(item["title"], item["url"])
-        if h not in state:
-            state[h] = now_ts
-    save_state(state)
-    print(f"State saved: {len(state)} items")
+        base = {
+            "item_hash": item_hash(item["title"], url or ""),
+            "title": item["title"],
+            "url": url,
+            "date": item.get("date"),
+            "service_name": item["service_name"],
+            "content": content,
+        }
 
-    # Persist new items to per-service archive files
-    persist_to_archive(all_new_items, archive_dir=DATA_DIR / "archive")
+        if item["service_name"] == "Chatham-Kent Police Service" and content:
+            for incident in split_ck_daily_release({**base, "content": content}):
+                to_insert.append({
+                    "item_hash": item_hash(incident["title"], incident.get("url") or ""),
+                    "title": incident["title"],
+                    "url": incident.get("url"),
+                    "date": incident.get("date"),
+                    "service_name": incident["service_name"],
+                    "content": incident.get("content"),
+                })
+        else:
+            to_insert.append(base)
 
-    # Backfill content for any archive items that don't have it yet
-    print("\nBackfilling content for archive items without content...")
-    backfill_content(archive_dir=DATA_DIR / "archive")
+    inserted = db.insert_press_releases(conn, to_insert)
+    print(f"Inserted {inserted} new items into database")
 
-    # Build the card feed
-    build_feed(
-        archive_dir=DATA_DIR / "archive",
-        tps_ndjson=DATA_DIR / "tps_calls.ndjson",
-        output_dir=DOCS_DIR,
-        days=365,
-    )
+    # Build the static feed
+    build_feed(conn, output_dir=DOCS_DIR, days=365)
     print("Done.")
 
 

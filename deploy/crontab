@@ -1,0 +1,7 @@
+PATH=/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin
+
+# Police press release scan — weekdays at 7 AM ET (noon UTC)
+0 12 * * 1-5 . /opt/policescout/.env && cd /opt/policescout && uv run python scan.py >> /var/log/policescout/scan.log 2>&1
+
+# TPS calls — every hour
+0 * * * * . /opt/policescout/.env && cd /opt/policescout && uv run python tps_calls.py >> /var/log/policescout/tps.log 2>&1

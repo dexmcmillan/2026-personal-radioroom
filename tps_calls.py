@@ -2,25 +2,23 @@
 tps_calls.py — Hourly collector for TPS Calls for Service.
 
 Fetches the live ArcGIS FeatureServer snapshot (last ~4 hours, ~70 records),
-deduplicates by OBJECTID against data/tps_calls_seen.json, and appends new
-records as NDJSON lines to data/tps_calls.ndjson.
+deduplicates by OBJECTID against the PostgreSQL database, and inserts new
+records into the tps_calls table.
 
 ArcGIS endpoint (public, no auth required):
   https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/C4S_Public_NoGO/FeatureServer/0
 """
 
-import json
-from datetime import datetime, timedelta, timezone
-from pathlib import Path
+from datetime import datetime, timezone
 
 import requests
+
+import db
 
 FEATURE_URL = (
     "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services"
     "/C4S_Public_NoGO/FeatureServer/0/query"
 )
-SEEN_FILE = Path(__file__).parent / "data" / "tps_calls_seen.json"
-LOG_FILE = Path(__file__).parent / "data" / "tps_calls.ndjson"
 
 USER_AGENT = (
     "Mozilla/5.0 (compatible; PolicePressScout/1.0; "
@@ -84,63 +82,25 @@ def parse_feature(attrs: dict) -> dict:
     }
 
 
-def load_seen(path: Path) -> dict[int, str]:
-    """
-    Load the already-logged OBJECTIDs from disk.
-    Returns a dict of {objectid: occurred_at_iso}.
-    Prunes entries older than 48 hours so recycled OBJECTIDs don't block new records.
-    Supports legacy format (plain list of ints) by treating those as having no timestamp.
-    """
-    if not path.exists():
-        return {}
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except Exception as e:
-        print(f"WARNING: Could not read seen file ({e}), starting fresh")
-        return {}
-
-    # Migrate legacy list format
-    if isinstance(raw, list):
-        return {}
-
-    cutoff = (datetime.now(tz=timezone.utc) - timedelta(hours=48)).isoformat()
-    return {int(k): v for k, v in raw.items() if v >= cutoff}
-
-
-def save_seen(seen: dict[int, str], path: Path) -> None:
-    """Persist the seen OBJECTIDs dict to disk."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(seen), encoding="utf-8")
-
-
-def append_records(records: list[dict], log_path: Path) -> None:
-    """Append records as NDJSON lines to the log file."""
-    log_path.parent.mkdir(parents=True, exist_ok=True)
-    with log_path.open("a", encoding="utf-8") as f:
-        for rec in records:
-            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
-
-
 def main() -> None:
-    seen = load_seen(SEEN_FILE)
-    print(f"Known OBJECTIDs: {len(seen)}")
+    conn = db.get_connection()
+    db.init_schema(conn)
+
+    seen_objectids = db.get_recent_tps_objectids(conn)
+    print(f"Known OBJECTIDs (last 48h): {len(seen_objectids)}")
 
     raw_features = fetch_features()
     print(f"Fetched: {len(raw_features)} features from API")
 
-    new_records = []
-    for attrs in raw_features:
-        oid = attrs.get("OBJECTID")
-        if oid is None or oid in seen:
-            continue
-        rec = parse_feature(attrs)
-        seen[oid] = rec["occurred_at"] or datetime.now(tz=timezone.utc).isoformat()
-        new_records.append(rec)
+    new_records = [
+        parse_feature(attrs)
+        for attrs in raw_features
+        if attrs.get("OBJECTID") is not None and attrs["OBJECTID"] not in seen_objectids
+    ]
 
-    if new_records:
-        append_records(new_records, LOG_FILE)
-        save_seen(seen, SEEN_FILE)
-        print(f"Appended: {len(new_records)} new records → {LOG_FILE}")
+    inserted = db.insert_tps_calls(conn, new_records)
+    if inserted:
+        print(f"Inserted: {inserted} new records into database")
     else:
         print("No new records.")
 

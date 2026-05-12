@@ -330,17 +330,20 @@
   <div id="feed">
     <div id="loading">Loading…</div>
   </div>
+  <div id="load-sentinel" style="display:none;height:1px;"></div>
 
   <script>
     (function () {
       var allItems = [];
+      var currentFiltered = [];
+      var renderedCount = 0;
+      var PAGE_SIZE = 100;
+      var sentinel = document.getElementById('load-sentinel');
 
       // --- Time formatting ---
       function formatTime(isoStr) {
-        // isoStr: "2026-03-13T15:18:56+00:00"
         var d = new Date(isoStr);
         var now = new Date();
-        // Compare calendar dates in UTC
         var dDate = d.toISOString().slice(0, 10);
         var todayDate = now.toISOString().slice(0, 10);
         var yd = new Date(now);
@@ -361,12 +364,23 @@
         return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' at ' + timeStr;
       }
 
-      // Format date-only string "2026-03-13" -> "Mar 13, 2026"
       function formatDate(isoDate) {
         if (!isoDate) return '';
         var parts = isoDate.split('-');
         var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
         return months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
+      }
+
+      // --- Search text (computed client-side) ---
+      function getSearchText(item) {
+        return [
+          (item.title || '').toLowerCase(),
+          (item.source || '').toLowerCase(),
+          (item.content || '').toLowerCase(),
+          (item.call_type || '').toLowerCase(),
+          (item.division || '').toLowerCase(),
+          (item.cross_streets || '').toLowerCase(),
+        ].join(' ');
       }
 
       // --- Card rendering ---
@@ -395,7 +409,6 @@
                 : esc(item.title)) +
             '</div>' +
             contentHtml;
-          // Wire up expand/collapse toggle after innerHTML is set
           if (item.content) {
             var toggle = div.querySelector('.card-content-toggle');
             var preview = div.querySelector('.card-content-preview');
@@ -408,7 +421,6 @@
             });
           }
         } else {
-          // tps_call
           div.className = 'card card-tps card-type-tps';
           var divText = item.division ? 'TPS · ' + item.division : 'TPS';
           var timeText = item.occurred_at ? formatTime(item.occurred_at) : formatDate(item.date);
@@ -435,35 +447,28 @@
           .replace(/"/g, '&quot;');
       }
 
-      // --- Render visible cards ---
-      function renderFeed(query) {
+      // --- Pagination ---
+      function appendNextPage() {
         var feed = document.getElementById('feed');
-        feed.innerHTML = '';
-        var q = query ? query.toLowerCase().trim() : '';
-        var visible = 0;
-
-        for (var i = 0; i < allItems.length; i++) {
-          var item = allItems[i];
-          var show = !q || item.search_text.indexOf(q) !== -1;
-          if (show) {
-            feed.appendChild(renderCard(item));
-            visible++;
-          }
+        var end = Math.min(renderedCount + PAGE_SIZE, currentFiltered.length);
+        for (var i = renderedCount; i < end; i++) {
+          feed.appendChild(renderCard(currentFiltered[i]));
         }
+        renderedCount = end;
+        sentinel.style.display = renderedCount < currentFiltered.length ? 'block' : 'none';
+        updateCount();
+      }
 
+      function updateCount() {
+        var q = searchEl.value.toLowerCase().trim();
+        var isFiltered = q !== '' || activeSources.size > 0;
         var countEl = document.getElementById('count');
-        if (q) {
-          countEl.textContent = 'Showing ' + visible + ' of ' + allItems.length;
+        if (isFiltered) {
+          countEl.textContent = currentFiltered.length + ' of ' + allItems.length + ' items';
+        } else if (renderedCount < allItems.length) {
+          countEl.textContent = 'Showing ' + renderedCount + ' of ' + allItems.length;
         } else {
           countEl.textContent = allItems.length + ' items';
-        }
-
-        if (visible === 0) {
-          var empty = document.createElement('p');
-          empty.style.color = '#666';
-          empty.style.padding = '20px 0';
-          empty.textContent = 'No results for "' + query + '"';
-          feed.appendChild(empty);
         }
       }
 
@@ -472,32 +477,37 @@
 
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
-        var feed = document.getElementById('feed');
-        feed.innerHTML = '';
-        var visible = 0;
+        var isFiltered = q !== '' || activeSources.size > 0;
 
-        for (var i = 0; i < allItems.length; i++) {
-          var item = allItems[i];
-          var matchesSearch = !q || item.search_text.indexOf(q) !== -1;
+        currentFiltered = allItems.filter(function (item) {
+          var matchesSearch = !q || getSearchText(item).indexOf(q) !== -1;
           var matchesSource = activeSources.size === 0 ||
             activeSources.has((item.source || '').toLowerCase());
-          if (matchesSearch && matchesSource) {
-            feed.appendChild(renderCard(item));
-            visible++;
+          return matchesSearch && matchesSource;
+        });
+
+        var feed = document.getElementById('feed');
+        feed.innerHTML = '';
+        renderedCount = 0;
+
+        if (isFiltered) {
+          // Search/filter active: render all matches immediately
+          for (var i = 0; i < currentFiltered.length; i++) {
+            feed.appendChild(renderCard(currentFiltered[i]));
           }
+          renderedCount = currentFiltered.length;
+          sentinel.style.display = 'none';
+          updateCount();
+        } else {
+          // No filter: render first page, sentinel handles the rest
+          appendNextPage();
         }
 
-        var countEl = document.getElementById('count');
-        var filtered = q || activeSources.size > 0;
-        countEl.textContent = filtered
-          ? 'Showing ' + visible + ' of ' + allItems.length
-          : allItems.length + ' items';
-
-        if (visible === 0) {
+        if (currentFiltered.length === 0) {
           var empty = document.createElement('p');
           empty.style.color = '#666';
           empty.style.padding = '20px 0';
-          empty.textContent = 'No results.';
+          empty.textContent = isFiltered ? 'No results.' : 'No items.';
           feed.appendChild(empty);
         }
       }
@@ -523,6 +533,16 @@
         applyFilters();
       });
 
+      // --- Infinite scroll via IntersectionObserver ---
+      if ('IntersectionObserver' in window) {
+        var observer = new IntersectionObserver(function (entries) {
+          if (entries[0].isIntersecting && renderedCount < currentFiltered.length) {
+            appendNextPage();
+          }
+        }, { rootMargin: '300px' });
+        observer.observe(sentinel);
+      }
+
       // --- Load data ---
       fetch('data.json')
         .then(function (r) {
@@ -531,6 +551,7 @@
         })
         .then(function (data) {
           allItems = data;
+          currentFiltered = allItems;
           applyFilters();
         })
         .catch(function (err) {
