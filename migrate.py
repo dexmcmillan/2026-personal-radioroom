@@ -18,6 +18,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import db
+from scan import normalize_date
 
 BASE_DIR = Path(__file__).parent
 ARCHIVE_DIR = BASE_DIR / "data" / "archive"
@@ -60,7 +61,7 @@ def migrate_press_releases(conn) -> None:
                 "item_hash": item_hash(title, url or ""),
                 "title": title,
                 "url": url,
-                "date": item.get("date"),
+                "date": normalize_date(item.get("date")),
                 "service_name": item.get("service_name", "Unknown").strip(),
                 "content": item.get("content") or None,
             })
