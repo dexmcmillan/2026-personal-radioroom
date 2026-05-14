@@ -15,8 +15,6 @@ import urllib3
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 
-import db
-
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # --- Paths ---
@@ -25,6 +23,10 @@ BASE_DIR = Path(__file__).parent
 DOCS_DIR = BASE_DIR / "docs"
 TEMPLATE_DIR = BASE_DIR / "templates"
 SOURCES_FILE = BASE_DIR / "sources.csv"
+DATA_DIR = BASE_DIR / "data"
+ARCHIVE_DIR = DATA_DIR / "archive"
+TPS_NDJSON = DATA_DIR / "tps_calls.ndjson"
+SEEN_ITEMS_FILE = DATA_DIR / "seen_items.json"
 
 USER_AGENT = (
     "Mozilla/5.0 (compatible; PoliceScout/1.0; +https://github.com)"
@@ -788,15 +790,51 @@ def build_feed(
     print(f"  [build_feed] Wrote {index_path}")
 
 
+# --- JSON storage helpers ---
+
+
+def _load_seen_items() -> dict:
+    """Load {hash: ISO-timestamp} from seen_items.json. Returns {} if missing."""
+    try:
+        return json.loads(SEEN_ITEMS_FILE.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _save_seen_items(seen: dict) -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    SEEN_ITEMS_FILE.write_text(json.dumps(seen, ensure_ascii=False), encoding="utf-8")
+
+
+def _service_slug(service_name: str) -> str:
+    import re as _re
+    return _re.sub(r"[^a-z0-9]+", "-", service_name.lower()).strip("-")
+
+
+def _append_to_archive(service_name: str, items: list[dict]) -> None:
+    ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+    path = ARCHIVE_DIR / f"{_service_slug(service_name)}.json"
+    existing: list = []
+    if path.exists():
+        try:
+            existing = json.loads(path.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError):
+            existing = []
+    existing.extend(items)
+    path.write_text(json.dumps(existing, ensure_ascii=False), encoding="utf-8")
+
+
 # --- Main ---
 
 
 def main():
+    from collections import defaultdict
+
     today_utc = datetime.now(timezone.utc).date()
     print(f"Police Scout — {today_utc}")
 
-    conn = db.get_connection()
-    db.init_schema(conn)
+    seen = _load_seen_items()
+    known = set(seen.keys())
 
     sources = load_sources()
     print(f"Loaded {len(sources)} sources")
@@ -820,9 +858,7 @@ def main():
         print(f"{len(items)} links found")
         all_scraped.extend(items)
 
-    # Batch dedup: one DB query for all scraped hashes
-    all_hashes = [item_hash(i["title"], i["url"] or "") for i in all_scraped]
-    known = db.get_known_hashes(conn, all_hashes)
+    # Dedup against seen hashes
     new_items = [i for i in all_scraped if item_hash(i["title"], i["url"] or "") not in known]
     print(f"\nScraped: {len(all_scraped)}, new: {len(new_items)}, failed services: {len(failed_services)}")
 
@@ -841,6 +877,7 @@ def main():
             "date": normalize_date(item.get("date")),
             "service_name": item["service_name"],
             "content": content,
+            "first_scraped_at": today_utc.isoformat(),
         }
 
         if item["service_name"] == "Chatham-Kent Police Service" and content:
@@ -852,15 +889,25 @@ def main():
                     "date": incident.get("date"),
                     "service_name": incident["service_name"],
                     "content": incident.get("content"),
+                    "first_scraped_at": today_utc.isoformat(),
                 })
         else:
             to_insert.append(base)
 
-    inserted = db.insert_press_releases(conn, to_insert)
-    print(f"Inserted {inserted} new items into database")
+    # Write to archive files and update seen dict
+    by_service: defaultdict[str, list] = defaultdict(list)
+    for item in to_insert:
+        by_service[item["service_name"]].append(item)
+    for service_name, service_items in by_service.items():
+        _append_to_archive(service_name, service_items)
+    for item in to_insert:
+        seen[item["item_hash"]] = datetime.now(timezone.utc).isoformat()
+    seen = prune_state(seen, today_utc)
+    _save_seen_items(seen)
+    print(f"Inserted {len(to_insert)} new items")
 
     # Build the static feed
-    build_feed(conn, output_dir=DOCS_DIR, days=365)
+    build_feed(archive_dir=ARCHIVE_DIR, tps_ndjson=TPS_NDJSON, output_dir=DOCS_DIR, days=365)
     print("Done.")
 
 
