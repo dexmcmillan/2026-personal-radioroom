@@ -20,6 +20,10 @@ FEATURE_URL = (
     "/C4S_Public_NoGO/FeatureServer/0/query"
 )
 
+_DATA_DIR = Path(__file__).parent / "data"
+_TPS_NDJSON = _DATA_DIR / "tps_calls.ndjson"
+_SEEN_FILE = _DATA_DIR / "tps_calls_seen.json"
+
 USER_AGENT = (
     "Mozilla/5.0 (compatible; PolicePressScout/1.0; "
     "+https://github.com/globeandmail)"
@@ -103,11 +107,10 @@ def append_records(records: list[dict], path: Path) -> None:
 
 
 def main() -> None:
-    conn = db.get_connection()
-    db.init_schema(conn)
+    _DATA_DIR.mkdir(parents=True, exist_ok=True)
 
-    seen_objectids = db.get_recent_tps_objectids(conn)
-    print(f"Known OBJECTIDs (last 48h): {len(seen_objectids)}")
+    seen_objectids = load_seen(_SEEN_FILE)
+    print(f"Known OBJECTIDs: {len(seen_objectids)}")
 
     raw_features = fetch_features()
     print(f"Fetched: {len(raw_features)} features from API")
@@ -118,9 +121,11 @@ def main() -> None:
         if attrs.get("OBJECTID") is not None and attrs["OBJECTID"] not in seen_objectids
     ]
 
-    inserted = db.insert_tps_calls(conn, new_records)
-    if inserted:
-        print(f"Inserted: {inserted} new records into database")
+    if new_records:
+        append_records(new_records, _TPS_NDJSON)
+        seen_objectids.update(rec["objectid"] for rec in new_records)
+        save_seen(seen_objectids, _SEEN_FILE)
+        print(f"Inserted: {len(new_records)} new records")
     else:
         print("No new records.")
 
