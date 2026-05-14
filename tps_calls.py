@@ -9,11 +9,11 @@ ArcGIS endpoint (public, no auth required):
   https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services/C4S_Public_NoGO/FeatureServer/0
 """
 
+import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
-
-import db
 
 FEATURE_URL = (
     "https://services.arcgis.com/S9th0jAJ7bqgIRjw/arcgis/rest/services"
@@ -80,6 +80,26 @@ def parse_feature(attrs: dict) -> dict:
         "longitude": attrs.get("LONGITUDE"),
         "collected_at": datetime.now(tz=timezone.utc).isoformat(),
     }
+
+
+def load_seen(path: Path) -> set[int]:
+    """Load seen objectids from a JSON file. Returns empty set if missing or corrupt."""
+    try:
+        return set(json.loads(path.read_text(encoding="utf-8")))
+    except (FileNotFoundError, json.JSONDecodeError, ValueError):
+        return set()
+
+
+def save_seen(seen: set[int], path: Path) -> None:
+    """Save seen objectids to a JSON file as a sorted array."""
+    path.write_text(json.dumps(sorted(seen)), encoding="utf-8")
+
+
+def append_records(records: list[dict], path: Path) -> None:
+    """Append records to an NDJSON file (one JSON object per line)."""
+    with path.open("a", encoding="utf-8") as f:
+        for rec in records:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
 
 
 def main() -> None:
