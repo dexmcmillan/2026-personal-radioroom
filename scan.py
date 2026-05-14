@@ -39,6 +39,12 @@ def item_hash(title: str, url: str) -> str:
     return hashlib.md5(raw.encode("utf-8")).hexdigest()
 
 
+def prune_state(state: dict, today: date) -> dict:
+    """Remove entries older than 30 days from a {key: ISO-timestamp} dict."""
+    cutoff = (today - timedelta(days=30)).isoformat()
+    return {k: v for k, v in state.items() if v[:10] >= cutoff}
+
+
 def load_sources() -> list[dict]:
     """Read sources.csv and return list of source dicts."""
     sources = []
