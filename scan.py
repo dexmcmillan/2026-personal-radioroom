@@ -675,32 +675,100 @@ def scrape_site(
 # --- Feed builder ---
 
 
-def build_feed(conn, output_dir: Path, days: int = 365) -> None:
+def build_feed(
+    archive_dir: Path,
+    tps_ndjson: Path,
+    output_dir: Path,
+    days: int = 365,
+) -> None:
     """
-    Build the card feed: query DB for press releases + TPS calls, write
-    docs/data.json and render docs/index.html from templates/feed.html.
+    Build the card feed from JSON archive files and TPS NDJSON.
+    Writes docs/data.json and docs/index.html.
     """
-    cutoff = date.today() - timedelta(days=days)
+    cutoff = (date.today() - timedelta(days=days)).isoformat()
     print(f"  [build_feed] Cutoff: {cutoff} ({days} days)")
 
-    press_items = db.load_press_releases(conn, cutoff)
+    # Load press releases from per-service archive files
+    press_items = []
+    if archive_dir.exists():
+        for f in sorted(archive_dir.glob("*.json")):
+            try:
+                releases = json.loads(f.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            for item in releases:
+                item_date = item.get("date")
+                fallback_date = item.get("first_scraped_at") or ""
+                if item_date is not None and item_date < cutoff:
+                    continue
+                sort_key = item_date or fallback_date
+                press_items.append({
+                    "type": "press_release",
+                    "title": item.get("title", ""),
+                    "url": item.get("url"),
+                    "date": item_date,
+                    "source": item.get("service_name", ""),
+                    "content": item.get("content"),
+                    "search_text": " ".join(
+                        s.lower()
+                        for s in [
+                            item.get("title") or "",
+                            item.get("service_name") or "",
+                            item.get("content") or "",
+                        ]
+                        if s
+                    ),
+                    "_sort_key": sort_key,
+                })
     print(f"  [build_feed] Press releases in window: {len(press_items)}")
 
-    tps_items = db.load_tps_calls(conn, cutoff)
+    # Load TPS calls from NDJSON
+    tps_items = []
+    if tps_ndjson.exists():
+        for line in tps_ndjson.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            occurred_at = rec.get("occurred_at")
+            if not occurred_at:
+                continue
+            rec_date = occurred_at[:10]
+            if rec_date < cutoff:
+                continue
+            tps_items.append({
+                "type": "tps_call",
+                "title": rec.get("call_type") or "",
+                "call_type": rec.get("call_type") or "",
+                "url": None,
+                "date": rec_date,
+                "occurred_at": occurred_at,
+                "source": "Toronto Police Service",
+                "division": rec.get("division") or "",
+                "cross_streets": rec.get("cross_streets") or "",
+                "search_text": " ".join(
+                    s.lower()
+                    for s in [
+                        rec.get("call_type") or "",
+                        rec.get("division") or "",
+                        rec.get("cross_streets") or "",
+                    ]
+                    if s
+                ),
+                "_sort_key": occurred_at,
+            })
     print(f"  [build_feed] TPS calls in window: {len(tps_items)}")
 
-    all_items = press_items + tps_items
-    all_items.sort(key=lambda x: x["_sort_key"], reverse=True)
-
+    all_items = sorted(press_items + tps_items, key=lambda x: x["_sort_key"], reverse=True)
     for item in all_items:
         item.pop("_sort_key", None)
 
     output_dir.mkdir(parents=True, exist_ok=True)
     data_path = output_dir / "data.json"
-    data_path.write_text(
-        json.dumps(all_items, ensure_ascii=False, indent=None),
-        encoding="utf-8",
-    )
+    data_path.write_text(json.dumps(all_items, ensure_ascii=False), encoding="utf-8")
     print(f"  [build_feed] Wrote {data_path} ({len(all_items)} items)")
 
     from zoneinfo import ZoneInfo
