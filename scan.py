@@ -700,10 +700,9 @@ def build_feed(
                 continue
             for item in releases:
                 item_date = normalize_date(item.get("date"))
-                fallback_date = (item.get("first_scraped_at") or "")[:10]
                 if item_date is not None and item_date < cutoff:
                     continue
-                sort_key = item_date or fallback_date
+                sort_key = item_date or ""
                 press_items.append({
                     "type": "press_release",
                     "title": item.get("title", ""),
