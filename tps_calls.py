@@ -89,7 +89,10 @@ def parse_feature(attrs: dict) -> dict:
 def load_seen(path: Path) -> set[int]:
     """Load seen objectids from a JSON file. Returns empty set if missing or corrupt."""
     try:
-        return set(json.loads(path.read_text(encoding="utf-8")))
+        data = json.loads(path.read_text(encoding="utf-8"))
+        # Legacy format was a dict {objectid: timestamp}; new format is a list of ints.
+        keys = data.keys() if isinstance(data, dict) else data
+        return {int(x) for x in keys}
     except (FileNotFoundError, json.JSONDecodeError, ValueError):
         return set()
 
