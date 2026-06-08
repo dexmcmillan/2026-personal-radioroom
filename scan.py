@@ -699,8 +699,8 @@ def build_feed(
             except (json.JSONDecodeError, OSError):
                 continue
             for item in releases:
-                item_date = item.get("date")
-                fallback_date = item.get("first_scraped_at") or ""
+                item_date = normalize_date(item.get("date"))
+                fallback_date = (item.get("first_scraped_at") or "")[:10]
                 if item_date is not None and item_date < cutoff:
                     continue
                 sort_key = item_date or fallback_date
@@ -777,7 +777,7 @@ def build_feed(
     now_et = datetime.now(ZoneInfo("America/Toronto"))
     et_label = now_et.strftime("%Z")
     generated_at = now_et.strftime(f"%B %d, %Y at %H:%M {et_label}")
-    sources = sorted({item["source"] for item in press_items if item.get("source")})
+    sources = sorted({item["source"] for item in all_items if item.get("source")})
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
     try:
         template = env.get_template("feed.html")
