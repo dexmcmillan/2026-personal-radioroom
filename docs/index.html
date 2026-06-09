@@ -233,7 +233,6 @@
       font-size: 0.8rem;
     }
     #loading { padding: 40px; text-align: center; color: #484f58; font-size: 0.8rem; }
-    #load-sentinel { height: 1px; display: none; }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     .blink { animation: blink 1s step-end infinite; }
 
@@ -694,7 +693,7 @@
       <h2>// TGAM Radio Room</h2>
       <p>TGAM Radio Room monitors 41 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
-      <p>Updated: June 09, 2026 at 16:23 EDT</p>
+      <p>Updated: June 09, 2026 at 16:29 EDT</p>
     </div>
   </div>
 
@@ -707,7 +706,8 @@
       var selectedService = null;
 
       var feedEl      = document.getElementById('feed');
-      var sentinelEl  = document.getElementById('load-sentinel');
+      var sentinelEl  = document.createElement('div');
+      sentinelEl.style.height = '1px';
       var emptyEl     = document.getElementById('feed-empty');
       var searchEl    = document.getElementById('search');
       var clockEl     = document.getElementById('clock');
