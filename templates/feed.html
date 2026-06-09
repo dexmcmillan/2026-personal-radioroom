@@ -3,560 +3,535 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Police Scout</title>
+  <title>TGAM Radio Room</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                   "Helvetica Neue", Arial, sans-serif;
-      background: #f5f5f5;
-      color: #222;
-      font-size: 15px;
-      line-height: 1.4;
+      font-family: "SF Mono", "Fira Code", "Cascadia Code", "Consolas", monospace;
+      background: #0d1117;
+      color: #e6edf3;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
-    header {
-      background: #1a1a2e;
-      color: #fff;
-      padding: 16px 20px 12px;
-    }
-
-    header h1 {
-      font-size: 1.4rem;
-      font-weight: 700;
-      letter-spacing: -0.02em;
-    }
-
-    header .updated {
-      font-size: 0.78rem;
-      color: #aaa;
-      margin-top: 2px;
-    }
-
-    .controls {
-      max-width: 800px;
-      margin: 16px auto 12px;
-      padding: 0 12px;
+    /* ── Top bar ── */
+    .topbar {
+      background: #161b22;
+      border-bottom: 1px solid #30363d;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
       gap: 12px;
+      flex-shrink: 0;
     }
-
+    .topbar-dot {
+      width: 9px; height: 9px;
+      border-radius: 50%;
+      background: #3fb950;
+      box-shadow: 0 0 8px #3fb950;
+      flex-shrink: 0;
+    }
+    .topbar-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #e6edf3;
+      white-space: nowrap;
+    }
+    .topbar-live {
+      font-size: 0.68rem;
+      color: #3fb950;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
     #search {
       flex: 1;
-      padding: 8px 12px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      font-size: 0.95rem;
-      outline: none;
-      background: #fff;
-    }
-
-    #search:focus {
-      border-color: #4a90d9;
-      box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.25);
-    }
-
-    #count {
-      font-size: 0.82rem;
-      color: #666;
-      white-space: nowrap;
-    }
-
-    #feed {
-      max-width: 800px;
-      margin: 0 auto;
-      padding: 0 12px 40px;
-    }
-
-    .card {
-      border-radius: 6px;
-      padding: 12px 16px;
-      margin-bottom: 8px;
-    }
-
-    .card-pr {
-      background: #fff;
-      border: 1px solid #e0e0e0;
-    }
-
-    .card-tps {
-      background: #eef3f8;
-      border: 1px solid #c8d8e8;
-    }
-
-    .card-meta {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .card-source {
-      font-size: 0.78rem;
-      color: #666;
-      font-weight: 500;
-    }
-
-    .card-time {
-      font-size: 0.78rem;
-      color: #888;
-      white-space: nowrap;
-    }
-
-    .card-title {
-      font-size: 0.97rem;
-      font-weight: 600;
-    }
-
-    .card-title a {
-      color: #1a1a8e;
-      text-decoration: none;
-    }
-
-    .card-title a:hover {
-      text-decoration: underline;
-    }
-
-    .card-location {
-      font-size: 0.82rem;
-      color: #666;
-      margin-top: 3px;
-    }
-
-    .card-content {
-      margin-top: 8px;
-      font-size: 0.85rem;
-      color: #444;
-      line-height: 1.5;
-    }
-
-    .card-content-preview {
-      white-space: pre-wrap;
-      overflow: hidden;
-      display: -webkit-box;
-      -webkit-line-clamp: 4;
-      -webkit-box-orient: vertical;
-    }
-
-    .card-content-full {
-      white-space: pre-wrap;
-      display: none;
-    }
-
-    .card-content-toggle {
-      background: none;
-      border: none;
-      color: #4a90d9;
-      cursor: pointer;
-      font-size: 0.8rem;
-      padding: 4px 0 0;
-      display: block;
-    }
-
-    .card-content-toggle:hover {
-      text-decoration: underline;
-    }
-
-    .card-type-tps .card-title {
-      color: #1a3a5e;
-    }
-
-    #loading {
-      text-align: center;
-      padding: 40px;
-      color: #666;
-    }
-
-    #error {
-      text-align: center;
-      padding: 40px;
-      color: #c00;
-    }
-
-    .sources-bar {
-      max-width: 800px;
-      margin: 0 auto 4px;
-      padding: 0 12px;
-    }
-
-    .sources-bar details {
-      font-size: 0.82rem;
-      color: #555;
-    }
-
-    .sources-bar summary {
-      cursor: pointer;
-      color: #4a90d9;
-      user-select: none;
-      padding: 4px 0;
-    }
-
-    .sources-bar summary:hover {
-      text-decoration: underline;
-    }
-
-    .sources-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px 8px;
-      padding: 8px 0 4px;
-    }
-
-    .sources-list span {
-      background: #e8eef5;
+      min-width: 0;
+      max-width: 360px;
+      background: #0d1117;
+      border: 1px solid #30363d;
       border-radius: 4px;
-      padding: 2px 7px;
+      padding: 4px 10px;
+      color: #e6edf3;
+      font-family: inherit;
       font-size: 0.78rem;
-      color: #333;
+    }
+    #search:focus { outline: none; border-color: #58a6ff; }
+    #search::placeholder { color: #484f58; }
+    #clock {
+      font-size: 0.7rem;
+      color: #3fb950;
+      white-space: nowrap;
+    }
+    .topbar-spacer { flex: 1; }
+    .info-btn {
+      background: none;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      font-family: inherit;
+      font-size: 0.72rem;
+      padding: 2px 7px;
+      border-radius: 3px;
       cursor: pointer;
-      user-select: none;
+      white-space: nowrap;
+      flex-shrink: 0;
     }
+    .info-btn:hover { border-color: #58a6ff; color: #58a6ff; }
 
-    .sources-list span:hover {
-      background: #d0dff0;
-    }
-
-    .sources-list span.active {
-      background: #1a1a8e;
-      color: #fff;
-    }
-
-    .about-bar {
-      max-width: 800px;
-      margin: 0 auto 4px;
-      padding: 0 12px;
-    }
-
-    .about-bar details {
-      font-size: 0.82rem;
-      color: #555;
-    }
-
-    .about-bar summary {
-      cursor: pointer;
-      color: #4a90d9;
-      user-select: none;
-      padding: 4px 0;
-    }
-
-    .about-bar summary:hover {
-      text-decoration: underline;
-    }
-
-    .about-content {
-      padding: 10px 0 6px;
-      line-height: 1.6;
-    }
-
-    .about-content p {
-      margin-bottom: 8px;
-    }
-
-    .about-content p:last-child {
-      margin-bottom: 0;
-    }
-
-    .legend {
+    /* ── Layout ── */
+    .layout {
       display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-top: 8px;
+      flex: 1;
+      overflow: hidden;
     }
 
-    .legend-item {
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      flex-shrink: 0;
+      background: #111318;
+      border-right: 1px solid #21262d;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+    .sidebar-label {
+      font-size: 0.6rem;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: #484f58;
+      padding: 4px 12px 6px;
+    }
+    .all-releases {
       display: flex;
       align-items: center;
       gap: 6px;
-      font-size: 0.8rem;
+      padding: 5px 12px;
+      font-size: 0.78rem;
+      color: #c9d1d9;
+      cursor: pointer;
+      border-left: 2px solid transparent;
     }
-
-    .legend-swatch {
-      width: 14px;
-      height: 14px;
-      border-radius: 3px;
+    .all-releases:hover { background: #1c2128; color: #e6edf3; }
+    .all-releases.active { color: #58a6ff; background: #1c2840; border-left-color: #58a6ff; }
+    .sidebar-divider { border: none; border-top: 1px solid #21262d; margin: 6px 0; }
+    .tree-item { position: relative; }
+    .tree-folder {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 3px 8px 3px 10px;
+      cursor: pointer;
+      user-select: none;
+      font-size: 0.78rem;
+      color: #c9d1d9;
+    }
+    .tree-folder:hover { background: #1c2128; }
+    .tree-folder.open { color: #e6edf3; }
+    .tree-arrow {
+      font-size: 0.6rem;
+      color: #58a6ff;
+      width: 10px;
+      display: inline-block;
+      transition: transform 0.12s;
       flex-shrink: 0;
     }
-
-    .legend-swatch-pr {
-      background: #fff;
-      border: 1px solid #e0e0e0;
+    .tree-folder.open .tree-arrow { transform: rotate(90deg); }
+    .folder-icon { font-size: 0.9rem; flex-shrink: 0; }
+    .tree-children { display: none; }
+    .tree-children.open { display: block; }
+    .tree-service {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 8px 2px 28px;
+      cursor: pointer;
+      font-size: 0.73rem;
+      color: #8b949e;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      border-left: 2px solid transparent;
+      margin-left: 10px;
     }
+    .tree-service:hover { background: #1c2128; color: #c9d1d9; }
+    .tree-service.active { color: #58a6ff; background: #1c2840; border-left-color: #58a6ff; }
 
-    .legend-swatch-tps {
-      background: #eef3f8;
-      border: 1px solid #c8d8e8;
+    /* ── Feed panel ── */
+    .feed-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
+    .breadcrumb {
+      background: #0d1117;
+      border-bottom: 1px solid #21262d;
+      padding: 6px 16px;
+      font-size: 0.7rem;
+      color: #484f58;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+    #breadcrumb-path { color: #58a6ff; }
+    #count { color: #484f58; margin-left: 20px; }
+    #feed { flex: 1; overflow-y: auto; }
+    .feed-item {
+      display: flex;
+      gap: 10px;
+      padding: 9px 16px;
+      border-bottom: 1px solid #161b22;
+      align-items: flex-start;
+    }
+    .feed-item:hover { background: #161b22; }
+    .feed-time {
+      font-size: 0.7rem;
+      color: #3fb950;
+      white-space: nowrap;
+      padding-top: 2px;
+      min-width: 52px;
+    }
+    .feed-body { min-width: 0; flex: 1; }
+    .feed-source {
+      font-size: 0.63rem;
+      text-transform: uppercase;
+      letter-spacing: 0.07em;
+      color: #58a6ff;
+      margin-bottom: 2px;
+    }
+    .feed-title {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: #e6edf3;
+      line-height: 1.35;
+    }
+    .feed-title a { color: inherit; text-decoration: none; }
+    .feed-title a:hover { color: #58a6ff; }
+    .feed-snippet {
+      font-size: 0.72rem;
+      color: #8b949e;
+      margin-top: 3px;
+      line-height: 1.45;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      white-space: pre-wrap;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    #feed-empty {
+      display: none;
+      padding: 60px 20px;
+      text-align: center;
+      color: #484f58;
+      font-size: 0.8rem;
+    }
+    #loading { padding: 40px; text-align: center; color: #484f58; font-size: 0.8rem; }
+    #load-sentinel { height: 1px; display: none; }
+
+    /* ── Info modal ── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 6px;
+      padding: 24px 28px;
+      max-width: 480px;
+      width: 90%;
+      position: relative;
+    }
+    .modal h2 {
+      font-size: 0.9rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #e6edf3;
+      margin-bottom: 14px;
+    }
+    .modal p {
+      font-size: 0.8rem;
+      color: #8b949e;
+      line-height: 1.65;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin-bottom: 10px;
+    }
+    .modal p:last-of-type { margin-bottom: 0; }
+    .modal-close {
+      position: absolute;
+      top: 12px; right: 14px;
+      background: none;
+      border: none;
+      color: #484f58;
+      font-family: inherit;
+      font-size: 0.8rem;
+      cursor: pointer;
+    }
+    .modal-close:hover { color: #e6edf3; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #484f58; }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Police Scout</h1>
-    <p class="updated">Updated: {{ generated_at }}</p>
-  </header>
-  <div class="sources-bar">
-    <details>
-      <summary>Monitoring {{ sources|length }} services</summary>
-      <div class="sources-list">
-        {% for name in sources %}<span>{{ name }}</span>{% endfor %}
-      </div>
-    </details>
+
+  <div class="topbar">
+    <div class="topbar-dot"></div>
+    <span class="topbar-title">TGAM Radio Room</span>
+    <span class="topbar-live">● LIVE</span>
+    <input id="search" type="search" placeholder="search_" autocomplete="off">
+    <span class="topbar-spacer"></span>
+    <span id="clock"></span>
+    <button class="info-btn" onclick="toggleModal(true)">[?]</button>
   </div>
-  <div class="about-bar">
-    <details>
-      <summary>About this tool</summary>
-      <div class="about-content">
-        <p>Police Scout automatically monitors the websites of {{ sources|length }} Canadian police services and collects press releases as they're published. It also ingests real-time call data from the Toronto Police Service (TPS) Major Incident Portal. The feed is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
-        <p>Press release body text is scraped from each agency's website and stored locally. TPS calls are pulled directly from the TPS open data feed and include the incident type, police division, and nearest cross-streets.</p>
-        <div class="legend">
-          <div class="legend-item">
-            <div class="legend-swatch legend-swatch-pr"></div>
-            <span>White card — press release from a police service website</span>
+
+  <div class="layout">
+
+    <div class="sidebar">
+      <div class="sidebar-label">Services</div>
+      <div class="all-releases active" onclick="selectAll(this)">◈ All Releases</div>
+      <hr class="sidebar-divider">
+      {% for province, services in provinces.items() %}
+      <div class="tree-item">
+        <div class="tree-folder" onclick="toggleFolder(this)">
+          <span class="tree-arrow">▶</span>
+          <span class="folder-icon">📁</span>
+          {{ province }}
+        </div>
+        <div class="tree-children">
+          {% for service in services %}
+          <div class="tree-service"
+               data-service="{{ service }}"
+               data-path="{{ service_paths[service] }}"
+               onclick="selectService(this)">
+            📄 {{ service }}
           </div>
-          <div class="legend-item">
-            <div class="legend-swatch legend-swatch-tps"></div>
-            <span>Blue card — live TPS major incident call</span>
-          </div>
+          {% endfor %}
         </div>
       </div>
-    </details>
+      {% endfor %}
+    </div>
+
+    <div class="feed-panel">
+      <div class="breadcrumb">
+        ~/radio-room/ » <span id="breadcrumb-path">all</span>
+        <span id="count"></span>
+      </div>
+      <div id="feed"><div id="loading">loading_</div></div>
+      <div id="feed-empty">no releases found_</div>
+      <div id="load-sentinel"></div>
+    </div>
+
   </div>
-  <div class="controls">
-    <input type="search" id="search" placeholder="Search releases and calls…" autofocus>
-    <span id="count"></span>
+
+  <!-- Info modal -->
+  <div class="modal-overlay" id="modal-overlay" onclick="handleOverlayClick(event)">
+    <div class="modal">
+      <button class="modal-close" onclick="toggleModal(false)">[x]</button>
+      <h2>// TGAM Radio Room</h2>
+      <p>TGAM Radio Room monitors {{ total_services }} Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
+      <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
+      <p>Updated: {{ generated_at }}</p>
+    </div>
   </div>
-  <div id="feed">
-    <div id="loading">Loading…</div>
-  </div>
-  <div id="load-sentinel" style="display:none;height:1px;"></div>
 
   <script>
     (function () {
       var allItems = [];
       var currentFiltered = [];
       var renderedCount = 0;
-      var PAGE_SIZE = 100;
-      var sentinel = document.getElementById('load-sentinel');
+      var PAGE_SIZE = 50;
+      var selectedService = null;
 
-      // --- Time formatting ---
-      function formatTime(isoStr) {
-        var d = new Date(isoStr);
+      var feedEl      = document.getElementById('feed');
+      var sentinelEl  = document.getElementById('load-sentinel');
+      var emptyEl     = document.getElementById('feed-empty');
+      var searchEl    = document.getElementById('search');
+      var clockEl     = document.getElementById('clock');
+      var breadcrumbEl = document.getElementById('breadcrumb-path');
+      var countEl     = document.getElementById('count');
+
+      // ── Clock ──
+      function tick() {
         var now = new Date();
-        var dDate = d.toISOString().slice(0, 10);
-        var todayDate = now.toISOString().slice(0, 10);
-        var yd = new Date(now);
-        yd.setUTCDate(yd.getUTCDate() - 1);
-        var yesterdayDate = yd.toISOString().slice(0, 10);
+        clockEl.textContent = now.toTimeString().slice(0, 8);
+      }
+      setInterval(tick, 1000);
+      tick();
 
-        var hh = d.getUTCHours();
-        var mm = d.getUTCMinutes();
-        var ampm = hh >= 12 ? 'PM' : 'AM';
-        var h12 = hh % 12 || 12;
-        var mStr = mm < 10 ? '0' + mm : String(mm);
-        var timeStr = h12 + ':' + mStr + ' ' + ampm;
-
-        if (dDate === todayDate) return timeStr + ' today';
-        if (dDate === yesterdayDate) return 'yesterday ' + timeStr;
-
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        return months[d.getUTCMonth()] + ' ' + d.getUTCDate() + ' at ' + timeStr;
+      // ── Info modal ──
+      function toggleModal(open) {
+        var overlay = document.getElementById('modal-overlay');
+        if (open) overlay.classList.add('open');
+        else overlay.classList.remove('open');
+      }
+      function handleOverlayClick(e) {
+        if (e.target === document.getElementById('modal-overlay')) toggleModal(false);
       }
 
-      function formatDate(isoDate) {
-        if (!isoDate) return '';
-        var parts = isoDate.split('-');
-        var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-        return months[parseInt(parts[1], 10) - 1] + ' ' + parseInt(parts[2], 10) + ', ' + parts[0];
-      }
-
-      // --- Search text (computed client-side) ---
-      function getSearchText(item) {
-        return [
-          (item.title || '').toLowerCase(),
-          (item.source || '').toLowerCase(),
-          (item.content || '').toLowerCase(),
-          (item.call_type || '').toLowerCase(),
-          (item.division || '').toLowerCase(),
-          (item.cross_streets || '').toLowerCase(),
-        ].join(' ');
-      }
-
-      // --- Card rendering ---
-      function renderCard(item) {
-        var div = document.createElement('div');
-
-        if (item.type === 'press_release') {
-          div.className = 'card card-pr';
-          var contentHtml = '';
-          if (item.content) {
-            contentHtml =
-              '<div class="card-content">' +
-                '<div class="card-content-preview">' + esc(item.content) + '</div>' +
-                '<div class="card-content-full">' + esc(item.content) + '</div>' +
-                '<button class="card-content-toggle">Show more</button>' +
-              '</div>';
-          }
-          div.innerHTML =
-            '<div class="card-meta">' +
-              '<span class="card-source">' + esc(item.source) + '</span>' +
-              '<span class="card-time">' + esc(formatDate(item.date) || 'Date unknown') + '</span>' +
-            '</div>' +
-            '<div class="card-title">' +
-              (item.url
-                ? '<a href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(item.title) + ' →</a>'
-                : esc(item.title)) +
-            '</div>' +
-            contentHtml;
-          if (item.content) {
-            var toggle = div.querySelector('.card-content-toggle');
-            var preview = div.querySelector('.card-content-preview');
-            var full = div.querySelector('.card-content-full');
-            toggle.addEventListener('click', function () {
-              var expanded = full.style.display === 'block';
-              preview.style.display = expanded ? '' : 'none';
-              full.style.display = expanded ? 'none' : 'block';
-              toggle.textContent = expanded ? 'Show more' : 'Show less';
-            });
-          }
+      // ── Folder toggle ──
+      function toggleFolder(el) {
+        el.classList.toggle('open');
+        var icon = el.querySelector('.folder-icon');
+        var children = el.closest('.tree-item').querySelector('.tree-children');
+        if (el.classList.contains('open')) {
+          icon.textContent = '📂';
+          children.classList.add('open');
         } else {
-          div.className = 'card card-tps card-type-tps';
-          var divText = item.division ? 'TPS · ' + item.division : 'TPS';
-          var timeText = item.occurred_at ? formatTime(item.occurred_at) : formatDate(item.date);
-          div.innerHTML =
-            '<div class="card-meta">' +
-              '<span class="card-source">' + esc(divText) + '</span>' +
-              '<span class="card-time">' + esc(timeText) + '</span>' +
-            '</div>' +
-            '<div class="card-title">' + esc(item.title) + '</div>' +
-            (item.cross_streets
-              ? '<div class="card-location">' + esc(item.cross_streets) + '</div>'
-              : '');
+          icon.textContent = '📁';
+          children.classList.remove('open');
         }
-
-        return div;
       }
 
+      // ── Service selection ──
+      function clearActive() {
+        document.querySelectorAll('.tree-service.active, .all-releases.active')
+          .forEach(function (el) { el.classList.remove('active'); });
+      }
+
+      function selectAll(el) {
+        clearActive();
+        el.classList.add('active');
+        selectedService = null;
+        breadcrumbEl.textContent = 'all';
+        applyFilters();
+      }
+
+      function selectService(el) {
+        clearActive();
+        el.classList.add('active');
+        selectedService = el.dataset.service;
+        breadcrumbEl.textContent = el.dataset.path;
+        applyFilters();
+      }
+
+      // ── Helpers ──
       function esc(str) {
         if (!str) return '';
         return String(str)
-          .replace(/&/g, '&amp;')
-          .replace(/</g, '&lt;')
-          .replace(/>/g, '&gt;')
-          .replace(/"/g, '&quot;');
+          .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
       }
 
-      // --- Pagination ---
+      function formatDate(iso) {
+        if (!iso) return '—';
+        var p = iso.split('-');
+        var months = ['Jan','Feb','Mar','Apr','May','Jun',
+                      'Jul','Aug','Sep','Oct','Nov','Dec'];
+        return months[parseInt(p[1], 10) - 1] + ' ' + parseInt(p[2], 10);
+      }
+
+      function getSearchText(item) {
+        return ((item.title || '') + ' ' + (item.source || '') + ' ' + (item.content || '')).toLowerCase();
+      }
+
+      // ── Card ──
+      function renderCard(item) {
+        var div = document.createElement('div');
+        div.className = 'feed-item';
+        var titleHtml = item.url
+          ? '<a href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(item.title) + ' →</a>'
+          : esc(item.title || '');
+        var snippetHtml = item.content
+          ? '<div class="feed-snippet">' + esc(item.content.slice(0, 500)) + '</div>'
+          : '';
+        div.innerHTML =
+          '<div class="feed-time">' + esc(formatDate(item.date)) + '</div>' +
+          '<div class="feed-body">' +
+            '<div class="feed-source">' + esc(item.source) + '</div>' +
+            '<div class="feed-title">' + titleHtml + '</div>' +
+            snippetHtml +
+          '</div>';
+        return div;
+      }
+
+      // ── Pagination ──
       function appendNextPage() {
-        var feed = document.getElementById('feed');
         var end = Math.min(renderedCount + PAGE_SIZE, currentFiltered.length);
         for (var i = renderedCount; i < end; i++) {
-          feed.appendChild(renderCard(currentFiltered[i]));
+          feedEl.appendChild(renderCard(currentFiltered[i]));
         }
         renderedCount = end;
-        sentinel.style.display = renderedCount < currentFiltered.length ? 'block' : 'none';
+        sentinelEl.style.display = renderedCount < currentFiltered.length ? 'block' : 'none';
         updateCount();
       }
 
       function updateCount() {
-        var q = searchEl.value.toLowerCase().trim();
-        var isFiltered = q !== '' || activeSources.size > 0;
-        var countEl = document.getElementById('count');
-        if (isFiltered) {
-          countEl.textContent = currentFiltered.length + ' of ' + allItems.length + ' items';
-        } else if (renderedCount < allItems.length) {
-          countEl.textContent = 'Showing ' + renderedCount + ' of ' + allItems.length;
+        var q = searchEl.value.trim();
+        if (q || selectedService) {
+          countEl.textContent = currentFiltered.length + ' of ' + allItems.length;
         } else {
-          countEl.textContent = allItems.length + ' items';
+          countEl.textContent = allItems.length + ' releases';
         }
       }
 
-      // --- Active source filter set ---
-      var activeSources = new Set();
-
+      // ── Filter ──
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
-        var isFiltered = q !== '' || activeSources.size > 0;
-
         currentFiltered = allItems.filter(function (item) {
-          var matchesSearch = !q || getSearchText(item).indexOf(q) !== -1;
-          var matchesSource = activeSources.size === 0 ||
-            activeSources.has((item.source || '').toLowerCase());
-          return matchesSearch && matchesSource;
+          var matchesService = !selectedService || item.source === selectedService;
+          var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
+          return matchesService && matchesSearch;
         });
-
-        var feed = document.getElementById('feed');
-        feed.innerHTML = '';
+        feedEl.innerHTML = '';
         renderedCount = 0;
-
-        if (isFiltered) {
-          // Search/filter active: render all matches immediately
-          for (var i = 0; i < currentFiltered.length; i++) {
-            feed.appendChild(renderCard(currentFiltered[i]));
-          }
-          renderedCount = currentFiltered.length;
-          sentinel.style.display = 'none';
+        if (currentFiltered.length === 0) {
+          emptyEl.style.display = '';
+          sentinelEl.style.display = 'none';
           updateCount();
         } else {
-          // No filter: render first page, sentinel handles the rest
+          emptyEl.style.display = 'none';
           appendNextPage();
-        }
-
-        if (currentFiltered.length === 0) {
-          var empty = document.createElement('p');
-          empty.style.color = '#666';
-          empty.style.padding = '20px 0';
-          empty.textContent = isFiltered ? 'No results.' : 'No items.';
-          feed.appendChild(empty);
         }
       }
 
-      // --- Live search ---
-      var searchEl = document.getElementById('search');
-      searchEl.addEventListener('input', function () {
-        applyFilters();
-      });
-
-      // --- Source chip filter ---
-      document.querySelector('.sources-list').addEventListener('click', function (e) {
-        var chip = e.target.closest('span');
-        if (!chip) return;
-        var name = chip.textContent.toLowerCase();
-        if (activeSources.has(name)) {
-          activeSources.delete(name);
-          chip.classList.remove('active');
-        } else {
-          activeSources.add(name);
-          chip.classList.add('active');
-        }
-        applyFilters();
-      });
-
-      // --- Infinite scroll via IntersectionObserver ---
+      // ── Infinite scroll ──
       if ('IntersectionObserver' in window) {
         var observer = new IntersectionObserver(function (entries) {
           if (entries[0].isIntersecting && renderedCount < currentFiltered.length) {
             appendNextPage();
           }
         }, { rootMargin: '300px' });
-        observer.observe(sentinel);
+        observer.observe(sentinelEl);
       }
 
-      // --- Load data ---
+      // ── Search ──
+      searchEl.addEventListener('input', applyFilters);
+
+      // ── Expose to inline onclick attrs ──
+      window.toggleFolder  = toggleFolder;
+      window.selectAll     = selectAll;
+      window.selectService = selectService;
+      window.toggleModal   = toggleModal;
+      window.handleOverlayClick = handleOverlayClick;
+
+      // ── Load data ──
       fetch('data.json')
         .then(function (r) {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.json();
         })
         .then(function (data) {
-          allItems = data;
-          currentFiltered = allItems;
+          allItems = data.filter(function (item) { return item.type !== 'tps_call'; });
           applyFilters();
         })
         .catch(function (err) {
-          document.getElementById('feed').innerHTML =
-            '<div id="error">Failed to load data: ' + esc(String(err)) + '</div>';
+          feedEl.innerHTML = '<div style="padding:40px;text-align:center;color:#f78166">error: ' + esc(String(err)) + '</div>';
         });
     })();
   </script>
