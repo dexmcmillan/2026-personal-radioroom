@@ -48,6 +48,11 @@ def prune_state(state: dict, today: date) -> dict:
     return {k: v for k, v in state.items() if v[:10] >= cutoff}
 
 
+def _slugify(s: str) -> str:
+    """Convert a string to a URL-safe slug (lowercase, hyphens only)."""
+    return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+
 def load_sources() -> list[dict]:
     """Read sources.csv and return list of source dicts."""
     sources = []
@@ -66,6 +71,11 @@ def load_sources() -> list[dict]:
                 })
     return sources
 
+
+_PROVINCE_ORDER = [
+    "National", "British Columbia", "Alberta", "Manitoba",
+    "Ontario", "New Brunswick", "Nova Scotia",
+]
 
 PRESS_RELEASE_KEYWORDS = (
     "news",
@@ -982,13 +992,6 @@ def build_feed(
     now_et = datetime.now(ZoneInfo("America/Toronto"))
     et_label = now_et.strftime("%Z")
     generated_at = now_et.strftime(f"%B %d, %Y at %H:%M {et_label}")
-    _PROVINCE_ORDER = [
-        "National", "British Columbia", "Alberta", "Manitoba",
-        "Ontario", "New Brunswick", "Nova Scotia",
-    ]
-
-    def _slugify(s: str) -> str:
-        return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
 
     raw_provinces: dict[str, list[str]] = {}
     for src in load_sources():
