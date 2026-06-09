@@ -220,10 +220,6 @@
       line-height: 1.45;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       white-space: pre-wrap;
-      display: -webkit-box;
-      -webkit-line-clamp: 4;
-      -webkit-box-orient: vertical;
-      overflow: hidden;
     }
     #feed-empty {
       display: none;
@@ -450,7 +446,7 @@
           ? '<a href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(item.title) + ' →</a>'
           : esc(item.title || '');
         var snippetHtml = item.content
-          ? '<div class="feed-snippet">' + esc(item.content.slice(0, 500)) + '</div>'
+          ? '<div class="feed-snippet">' + esc(item.content) + '</div>'
           : '';
         div.innerHTML =
           '<div class="feed-time">' + esc(formatDate(item.date)) + '</div>' +
@@ -492,7 +488,8 @@
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
         currentFiltered = allItems.filter(function (item) {
-          var matchesService = !selectedService || item.source === selectedService;
+          // search is always global; service filter only applies when not searching
+          var matchesService = q ? true : (!selectedService || item.source === selectedService);
           var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
           return matchesService && matchesSearch;
         });
