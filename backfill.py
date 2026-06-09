@@ -30,10 +30,12 @@ from scan import (
     fetch_rcmp_items,
     fetch_vpd_items,
     fetch_winnipeg_items,
+    fetch_nelson_items,
     extract_links_by_selector,
     extract_links_title_from_heading,
     extract_links,
     load_sources,
+    clean_content,
 )
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -314,6 +316,27 @@ def backfill_winnipeg(cutoff: date) -> list[dict]:
     return results
 
 
+# --- Nelson backfill (single listing page, custom fetcher) ---
+
+def backfill_nelson(cutoff: date) -> list[dict]:
+    """Fetch all Nelson Police items (single page, no pagination needed)."""
+    items = fetch_nelson_items()
+    result = []
+    for item in items:
+        if not is_within_cutoff(item.get("date"), cutoff):
+            continue
+        content = item.get("content")
+        if content:
+            content = clean_content(content, item["title"])
+        result.append({
+            "title": item["title"],
+            "url": item["url"],
+            "date": item.get("date"),
+            "content": content,
+        })
+    return result
+
+
 # --- Generic paginated backfill ---
 
 def backfill_site(
@@ -407,6 +430,8 @@ def main():
                 new_items = backfill_vpd(cutoff)
             elif "winnipeg.ca/police" in url:
                 new_items = backfill_winnipeg(cutoff)
+            elif "nelson.ca" in url:
+                new_items = backfill_nelson(cutoff)
             else:
                 new_items = backfill_site(name, url, link_selector, date_selector, cutoff)
         except Exception as e:
