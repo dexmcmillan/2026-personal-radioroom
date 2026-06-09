@@ -7,6 +7,7 @@ deduplicates via PostgreSQL, and publishes a static HTML digest.
 import csv
 import hashlib
 import json
+import re
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
@@ -61,6 +62,7 @@ def load_sources() -> list[dict]:
                     "url": url,
                     "link_selector": row.get("link_selector", "").strip(),
                     "date_selector": row.get("date_selector", "").strip(),
+                    "province": row.get("province", "").strip(),
                 })
     return sources
 
@@ -365,6 +367,114 @@ def _clean_hamilton_content(text: str, title: str) -> str:
     return text.strip()
 
 
+_NOISE_LINES_EXACT = frozenset({
+    # Social media nav
+    "x", "twitter", "facebook", "instagram", "youtube", "linkedin", "tiktok", "snapchat",
+    # UI buttons
+    "menu", "search", "print this page", "subscribe", "email", "more",
+    # Alert/compat banners
+    "close alert banner", "close old browser notification", "browser compatibility notification",
+    "skip to content",
+    # Emergency nav (not content)
+    "emergency:", "report online", "contact us", "i want to",
+    # Release labels
+    "official news release download", "download media kit",
+    "back to news search", "back to search",
+    "subscribe to news", "subscribe to this page",
+    # CMS category/section labels (standalone)
+    "media release", "media releases",
+    "general releases", "public advisories", "police media releases",
+    # Archive nav
+    "see more",
+    # Phone header labels
+    "non emergency phone:", "non emergencies",
+    # CMS artifacts
+    "defaultinterior", "testing xsl",
+    # Text size controls
+    "decrease text size", "default text size", "increase text size",
+    # Language toggles
+    "en", "fr",
+})
+
+_NOISE_LINE_PATTERNS = [
+    re.compile(r'^\d{3}[-.\s]\d{3}[-.\s]\d{4}$'),      # 10-digit phone
+    re.compile(r'^\d{1,2}$'),                            # single/double digit (9-1-1 split)
+    re.compile(r'^Non-?emergency:\s*\d'),                # non-emergency phone lines
+    re.compile(r'^(January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{4}$'),
+    re.compile(r'^\d{4}$'),                              # bare years (archive nav)
+    re.compile(r'^file://'),                             # CMS file path errors
+    re.compile(r'^It appears you are trying to access'),
+    re.compile(r'^As a result, parts of the site may not function'),
+    re.compile(r'^We recommend updating your browser'),
+    re.compile(r'^Published on:\s'),                     # Barrie/WordPress "Published on: date | Categories:"
+]
+
+_CONTENT_FOOTER_MARKERS = (
+    "\nRelated Stories",
+    "\nDownload Media Kit",
+    "\nSubscribe to News\n",
+    "\nSubscribe to this page",
+)
+
+
+def clean_content(text: str, title: str = "") -> str:
+    """
+    Strip common CMS navigation boilerplate from scraped press release text.
+
+    Removes standalone social media links, phone numbers, month/year archive
+    nav, browser compatibility warnings, CMS error artifacts, and common UI
+    labels. If title is provided and found within the first 1000 chars, strips
+    everything up to and including the title line (it is shown separately in
+    the card UI). Also strips common footer sections.
+    """
+    import re as _re
+
+    lines = text.split("\n")
+    cleaned = []
+    for line in lines:
+        s = line.strip()
+        if s.lower() in _NOISE_LINES_EXACT:
+            continue
+        if any(p.search(s) for p in _NOISE_LINE_PATTERNS):
+            continue
+        cleaned.append(line)
+
+    text = "\n".join(cleaned)
+
+    # Strip leading boilerplate up to and including the repeated title
+    if title:
+        idx = text.find(title.strip())
+        if 0 <= idx < 1000:
+            newline_after = text.find("\n", idx + len(title.strip()))
+            text = text[newline_after + 1:] if newline_after != -1 else text[idx + len(title.strip()):]
+            # Strip "Official News Release Download" immediately after the title
+            text = _re.sub(r"^Official News Release Download\s*\n", "", text)
+
+    # Strip GovDelivery/CivicPlus byline block that follows the title:
+    #   "By\n[Service Name]\n-\n[Date]\n[optional category lines]"
+    # Also handles the no-"By" variant: "-\n[Date]\n[category]"
+    text = _re.sub(
+        r"^(?:By\n[^\n]+\n)?-\n[^\n]+\n(?:[^\n]+\n){0,2}",
+        "",
+        text,
+    )
+    # Strip any orphaned date or CMS file-number lines left after byline removal
+    text = _re.sub(
+        r"^(?:[A-Z][a-z]+ \d{1,2},?\s+\d{4}\n|\d{2}-\d{5,}\n)+",
+        "",
+        text,
+    )
+
+    # Strip common footer sections
+    for marker in _CONTENT_FOOTER_MARKERS:
+        idx = text.find(marker)
+        if idx != -1:
+            text = text[:idx]
+
+    text = _re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip()
+
+
 def fetch_release_content(url: str) -> str | None:
     """
     Fetch an individual press release page and return its plain-text body.
@@ -433,6 +543,100 @@ RCMP_NEWS_URL = "https://rcmp.ca/en/news"
 
 VPD_API_URL = "https://vpd.ca/wp-json/wp/v2/posts"
 WINNIPEG_NEWS_URL = "https://www.winnipeg.ca/police/community/news-releases"
+NELSON_NEWS_URL = "https://www.nelson.ca/CivicAlerts.aspx?CID=7"
+
+
+def fetch_nelson_items() -> list[dict]:
+    """
+    Fetch Nelson Police Department news from the CivicAlert CMS.
+
+    The listing page uses generic 'Media release' link text. This fetcher
+    resolves each article's real title and date from the individual article
+    page, so those fields are available without a second fetch later.
+    """
+    resp = requests.get(
+        NELSON_NEWS_URL,
+        timeout=15,
+        headers={"User-Agent": USER_AGENT},
+        verify=False,
+    )
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+
+    results = []
+    seen_urls = set()
+
+    for li in soup.select("li.list-group-item"):
+        a = li.select_one("a.article-title-link")
+        if not a:
+            continue
+        href = a.get("href", "")
+        m = re.search(r"/Detail/(\d+)$", href)
+        if not m:
+            continue
+        article_id = m.group(1)
+        url = f"https://www.nelson.ca/CivicAlerts.aspx?AID={article_id}"
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+
+        # Fetch the article page for date, title, and content
+        try:
+            ar = requests.get(
+                url,
+                timeout=15,
+                headers={"User-Agent": USER_AGENT},
+                verify=False,
+            )
+            ar.raise_for_status()
+        except Exception:
+            results.append({"title": a.get_text(strip=True), "url": url, "date": None, "content": None})
+            continue
+
+        asoup = BeautifulSoup(ar.text, "html.parser")
+        for tag in asoup(["script", "style", "nav", "header", "footer", "form", "noscript", "aside"]):
+            tag.decompose()
+
+        raw = (asoup.find("main") or asoup.find("body") or asoup).get_text(separator="\n", strip=True)
+        raw = re.sub(r"\n{3,}", "\n\n", raw)
+
+        # Date: "Posted on June 03, 2026"
+        date_str = None
+        dm = re.search(r"Posted on ([A-Za-z]+ \d{1,2}, \d{4})", raw)
+        if dm:
+            date_str = normalize_date(dm.group(1))
+
+        # Real title: first short, non-generic line after the date stamp
+        title = a.get_text(strip=True)
+        after_date = re.search(r"Posted on [A-Za-z]+ \d{1,2}, \d{4}\n+", raw)
+        if after_date:
+            for line in raw[after_date.end():].split("\n"):
+                s = line.strip()
+                if not s:
+                    continue
+                # Skip known boilerplate lines
+                if s.upper() in ("FOR IMMEDIATE RELEASE", "MEDIA RELEASE", "MEDIA RELEASES"):
+                    continue
+                if re.match(r"^Nelson,?\s+B\.?C\.?\.?$", s, re.IGNORECASE):
+                    continue
+                if re.match(r"^Media Release\s*[–\-]", s, re.IGNORECASE):
+                    continue
+                # Accept as title only if it fits on one readable line
+                if 10 <= len(s) <= 120:
+                    title = s
+                break  # stop at the first real content line regardless
+
+        # Content: everything after the date stamp line
+        content = None
+        after = re.split(r"Posted on [A-Za-z]+ \d{1,2}, \d{4}\n*", raw, maxsplit=1)
+        if len(after) > 1:
+            body = after[1].strip()
+            if len(body) > 50:
+                content = body
+
+        results.append({"title": title, "url": url, "date": date_str, "content": content})
+
+    return results
 
 
 def fetch_opp_items(limit: int = 200) -> list[dict]:
@@ -641,6 +845,8 @@ def scrape_site(
             raw_links = fetch_vpd_items()
         elif "winnipeg.ca/police" in url:
             raw_links = fetch_winnipeg_items()
+        elif "nelson.ca" in url:
+            raw_links = fetch_nelson_items()
         else:
             resp = requests.get(
                 url,
@@ -776,14 +982,46 @@ def build_feed(
     now_et = datetime.now(ZoneInfo("America/Toronto"))
     et_label = now_et.strftime("%Z")
     generated_at = now_et.strftime(f"%B %d, %Y at %H:%M {et_label}")
-    sources = sorted({item["source"] for item in all_items if item.get("source")})
+    _PROVINCE_ORDER = [
+        "National", "British Columbia", "Alberta", "Manitoba",
+        "Ontario", "New Brunswick", "Nova Scotia",
+    ]
+
+    def _slugify(s: str) -> str:
+        return re.sub(r"[^a-z0-9]+", "-", s.lower()).strip("-")
+
+    raw_provinces: dict[str, list[str]] = {}
+    for src in load_sources():
+        prov = src.get("province") or "Other"
+        raw_provinces.setdefault(prov, []).append(src["name"])
+
+    provinces: dict[str, list[str]] = {}
+    for prov in _PROVINCE_ORDER:
+        if prov in raw_provinces:
+            provinces[prov] = sorted(raw_provinces[prov])
+    for prov in sorted(raw_provinces):
+        if prov not in provinces:
+            provinces[prov] = sorted(raw_provinces[prov])
+
+    service_paths: dict[str, str] = {}
+    for prov, svcs in provinces.items():
+        for svc in svcs:
+            service_paths[svc] = f"{_slugify(prov)}/{_slugify(svc)}"
+
+    total_services = sum(len(svcs) for svcs in provinces.values())
+
     env = Environment(loader=FileSystemLoader(str(TEMPLATE_DIR)), autoescape=True)
     try:
         template = env.get_template("feed.html")
     except Exception as e:
         print(f"  [build_feed] WARNING: could not load feed.html template: {e}")
         return
-    html = template.render(generated_at=generated_at, sources=sources)
+    html = template.render(
+        generated_at=generated_at,
+        provinces=provinces,
+        service_paths=service_paths,
+        total_services=total_services,
+    )
     index_path = output_dir / "index.html"
     index_path.write_text(html, encoding="utf-8")
     print(f"  [build_feed] Wrote {index_path}")
@@ -868,6 +1106,8 @@ def main():
         content = item.get("content") or (fetch_release_content(url) if url else None)
         if content and item["service_name"] == "Hamilton Police Service":
             content = _clean_hamilton_content(content, item["title"])
+        if content:
+            content = clean_content(content, item["title"])
 
         base = {
             "item_hash": item_hash(item["title"], url or ""),
