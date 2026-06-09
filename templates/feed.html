@@ -234,6 +234,8 @@
     }
     #loading { padding: 40px; text-align: center; color: #484f58; font-size: 0.8rem; }
     #load-sentinel { height: 1px; display: none; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .blink { animation: blink 1s step-end infinite; }
 
     /* ── Info modal ── */
     .modal-overlay {
@@ -333,7 +335,7 @@
         ~/radio-room/ » <span id="breadcrumb-path">all</span>
         <span id="count"></span>
       </div>
-      <div id="feed"><div id="loading">loading_</div></div>
+      <div id="feed"><div id="loading">loading<span class="blink">_</span></div></div>
       <div id="feed-empty">no releases found_</div>
     </div>
 

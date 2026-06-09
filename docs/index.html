@@ -234,6 +234,8 @@
     }
     #loading { padding: 40px; text-align: center; color: #484f58; font-size: 0.8rem; }
     #load-sentinel { height: 1px; display: none; }
+    @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+    .blink { animation: blink 1s step-end infinite; }
 
     /* ── Info modal ── */
     .modal-overlay {
@@ -679,7 +681,7 @@
         ~/radio-room/ » <span id="breadcrumb-path">all</span>
         <span id="count"></span>
       </div>
-      <div id="feed"><div id="loading">loading_</div></div>
+      <div id="feed"><div id="loading">loading<span class="blink">_</span></div></div>
       <div id="feed-empty">no releases found_</div>
     </div>
 
@@ -692,7 +694,7 @@
       <h2>// TGAM Radio Room</h2>
       <p>TGAM Radio Room monitors 41 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
-      <p>Updated: June 09, 2026 at 16:15 EDT</p>
+      <p>Updated: June 09, 2026 at 16:18 EDT</p>
     </div>
   </div>
 
