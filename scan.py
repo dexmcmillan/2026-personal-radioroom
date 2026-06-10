@@ -837,6 +837,55 @@ def fetch_stlatlimx_items(cutoff_days: int = 730) -> list[dict]:
     return results
 
 
+def fetch_cbrps_items() -> list[dict]:
+    """Fetch Cape Breton Regional Police media releases.
+
+    Some items have a 'Read more' link (URL set, content fetched later).
+    Others are fully inline on the listing page (content extracted here,
+    URL set to the listing page so the title-based dedup still works).
+    """
+    from urllib.parse import urljoin
+    base = "https://www.cbrps.ca/media-releases/"
+    resp = requests.get(base, timeout=15, headers={"User-Agent": USER_AGENT})
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    results = []
+    seen_titles: set[str] = set()
+    for container in soup.select("div.item-content"):
+        heading = container.find(["h2", "h3"])
+        if not heading:
+            continue
+        title = heading.get_text(strip=True)
+        if not title or title in seen_titles:
+            continue
+        seen_titles.add(title)
+        # Date is in <p><em>...</em></p>
+        date_str = None
+        em = container.find("em")
+        if em:
+            date_str = em.get_text(strip=True)
+        # Check for a "Read more" link
+        readmore = container.select_one("p.readmore a[href]")
+        if readmore:
+            url = urljoin(base, readmore["href"])
+            content = None  # fetched later by fetch_release_content
+        else:
+            url = base
+            # Extract inline content (skip heading and readmore paragraphs)
+            paras = []
+            for p in container.find_all("p"):
+                if p.find_parent(class_="readmore"):
+                    continue
+                if p.find("em") and p.get_text(strip=True) == (date_str or ""):
+                    continue  # skip the date paragraph
+                text = p.get_text(separator=" ", strip=True)
+                if text:
+                    paras.append(text)
+            content = "\n".join(paras) if paras else None
+        results.append({"title": title, "url": url, "date": date_str, "content": content})
+    return results
+
+
 def fetch_vicpd_items() -> list[dict]:
     """Fetch Victoria Police Department news from Ghost CMS tag feed.
 
@@ -988,6 +1037,8 @@ def scrape_site(
             raw_links = fetch_winnipeg_items()
         elif "nelson.ca" in url:
             raw_links = fetch_nelson_items()
+        elif "cbrps.ca" in url:
+            raw_links = fetch_cbrps_items()
         elif "engagement.vicpd.ca" in url:
             raw_links = fetch_vicpd_items()
         elif "stlatlimxpolice.ca" in url:
