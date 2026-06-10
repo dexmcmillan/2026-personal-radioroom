@@ -437,6 +437,8 @@ _CONTENT_FOOTER_MARKERS = (
     "\nShare Story\n",
     "\nPreparing your download...\n",
     "\nAbout Us\nOur People\n",
+    "\nView this post on Instagram\n",
+    "\nReport A Crime\nThe work we do",
 )
 
 
@@ -517,6 +519,9 @@ def clean_content(text: str, title: str = "") -> str:
         idx = text.find(marker)
         if idx != -1:
             text = text[:idx]
+
+    # Join orphaned bullet characters (·\nText) onto the same line as their content
+    text = _re.sub(r"·\n", "· ", text)
 
     # Strip Calgary PressPoint attachment filename lines (e.g. "CA26249031_\nCA26249031.JPG_")
     text = _re.sub(r"\n[A-Za-z0-9 ._-]+_(\n|$)", "\n", text)
