@@ -748,6 +748,37 @@ def fetch_rcmp_items() -> list[dict]:
     return results
 
 
+def fetch_vicpd_items() -> list[dict]:
+    """Fetch Victoria Police Department news from Ghost CMS tag feed.
+
+    The post-link anchor wraps the whole card, so title comes from img alt.
+    """
+    from urllib.parse import urljoin
+    resp = requests.get(
+        "https://engagement.vicpd.ca/tag/news-releases/",
+        timeout=15,
+        headers={"User-Agent": USER_AGENT},
+    )
+    resp.raise_for_status()
+    soup = BeautifulSoup(resp.text, "html.parser")
+    results = []
+    seen_urls = set()
+    for a in soup.select("a.post-link"):
+        href = a.get("href", "")
+        if not href:
+            continue
+        url = urljoin("https://engagement.vicpd.ca", href)
+        if url in seen_urls:
+            continue
+        seen_urls.add(url)
+        img = a.find("img")
+        title = (img.get("alt", "").strip() if img else "") or a.get_text(strip=True)
+        if not title:
+            continue
+        results.append({"title": title, "url": url, "date": None})
+    return results
+
+
 def fetch_vpd_items(per_page: int = 100) -> list[dict]:
     """Fetch Vancouver Police Department news via WordPress REST API."""
     resp = requests.get(
@@ -868,6 +899,8 @@ def scrape_site(
             raw_links = fetch_winnipeg_items()
         elif "nelson.ca" in url:
             raw_links = fetch_nelson_items()
+        elif "engagement.vicpd.ca" in url:
+            raw_links = fetch_vicpd_items()
         else:
             resp = requests.get(
                 url,
