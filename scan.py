@@ -439,6 +439,8 @@ _CONTENT_FOOTER_MARKERS = (
     "\nAbout Us\nOur People\n",
     "\nView this post on Instagram\n",
     "\nReport A Crime\nThe work we do",
+    "\nMedia Officer\n",
+    "\nEmail. Media Officer\n",
 )
 
 
@@ -519,6 +521,17 @@ def clean_content(text: str, title: str = "") -> str:
         idx = text.find(marker)
         if idx != -1:
             text = text[:idx]
+
+    # Join name+comma breaks: "LASTNAME\n, age 38" → "LASTNAME, age 38"
+    text = _re.sub(r"\n, ", ", ", text)
+
+    # Strip Bridgewater/GovDelivery release header block
+    # "News Room\nFor Immediate Release\nBridgewater Police Service – Media Release\nDate: ...\nSubject: ..."
+    text = _re.sub(
+        r"^News Room\nFor Immediate Release\n[^\n]+\nDate: [^\n]+\n(?:Subject: [^\n]+\n)?",
+        "",
+        text,
+    )
 
     # Join orphaned bullet characters (·\nText) onto the same line as their content
     text = _re.sub(r"·\n", "· ", text)
