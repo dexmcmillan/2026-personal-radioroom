@@ -182,6 +182,7 @@
     #breadcrumb-path { color: #58a6ff; }
     #count { color: #484f58; margin-left: 20px; }
     #feed { flex: 1; overflow-y: auto; }
+    .feed-inner { max-width: 860px; }
     .feed-item {
       display: flex;
       gap: 10px;
@@ -330,7 +331,7 @@
         ~/radio-room/ » <span id="breadcrumb-path">all</span>
         <span id="count"></span>
       </div>
-      <div id="feed"><div id="loading">loading<span class="blink">_</span></div></div>
+      <div id="feed"><div class="feed-inner"><div id="loading">loading<span class="blink">_</span></div></div></div>
       <div id="feed-empty">no releases found_</div>
     </div>
 
@@ -356,6 +357,7 @@
       var selectedService = null;
 
       var feedEl      = document.getElementById('feed');
+      var feedInnerEl = feedEl.querySelector('.feed-inner');
       var sentinelEl  = document.createElement('div');
       sentinelEl.style.height = '1px';
       var emptyEl     = document.getElementById('feed-empty');
@@ -464,12 +466,12 @@
       function appendNextPage() {
         var end = Math.min(renderedCount + PAGE_SIZE, currentFiltered.length);
         for (var i = renderedCount; i < end; i++) {
-          feedEl.appendChild(renderCard(currentFiltered[i]));
+          feedInnerEl.appendChild(renderCard(currentFiltered[i]));
         }
         renderedCount = end;
         var hasMore = renderedCount < currentFiltered.length;
         if (hasMore) {
-          feedEl.appendChild(sentinelEl);  // move sentinel to end of feed
+          feedInnerEl.appendChild(sentinelEl);  // move sentinel to end of feed
           sentinelEl.style.display = 'block';
         } else {
           sentinelEl.style.display = 'none';
@@ -495,7 +497,7 @@
           var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
           return matchesService && matchesSearch;
         });
-        feedEl.innerHTML = '';
+        feedInnerEl.innerHTML = '';
         renderedCount = 0;
         if (currentFiltered.length === 0) {
           emptyEl.style.display = 'block';
