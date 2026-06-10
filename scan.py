@@ -464,6 +464,12 @@ def clean_content(text: str, title: str = "") -> str:
             # Strip "Official News Release Download" immediately after the title
             text = _re.sub(r"^Official News Release Download\s*\n", "", text)
 
+    # Strip RCMP header: everything up to and including "On this page\nContent\nContacts\nContent\n"
+    _rcmp_marker = "On this page\nContent\nContacts\nContent\n"
+    _rcmp_idx = text.find(_rcmp_marker)
+    if 0 <= _rcmp_idx < 500:
+        text = text[_rcmp_idx + len(_rcmp_marker):]
+
     # Strip VPD-style byline: Author\nISO-timestamp\nDate\n|\nCategory\n|
     text = _re.sub(
         r"^[A-Za-z ]+\n\d{4}-\d{2}-\d{2}T[^\n]+\n[^\n]+\n\|\n[^\n]+\n\|\n",
@@ -748,6 +754,61 @@ def fetch_rcmp_items() -> list[dict]:
     return results
 
 
+def fetch_stlatlimx_items(cutoff_days: int = 730) -> list[dict]:
+    """Fetch St'át'l̓imx Tribal Police news, paginating through all pages.
+
+    The listing shows 2 items per page (?paged=N). Dates are embedded in
+    the title text as "Month DD, YYYY: Real title".
+    """
+    import re as _re
+    from datetime import date as _date, timedelta as _timedelta
+    from urllib.parse import urljoin
+
+    base = "https://stlatlimxpolice.ca/?page_id=504"
+    cutoff = (_date.today() - _timedelta(days=cutoff_days)).isoformat()
+    results = []
+    seen_urls: set[str] = set()
+
+    for page in range(1, 50):
+        url = base if page == 1 else f"{base}&paged={page}"
+        try:
+            resp = requests.get(url, timeout=15, headers={"User-Agent": USER_AGENT}, verify=False)
+            resp.raise_for_status()
+        except Exception:
+            break
+        soup = BeautifulSoup(resp.text, "html.parser")
+        items_on_page = soup.select("h4.uagb-post__title a")
+        if not items_on_page:
+            break
+
+        page_had_recent = False
+        for a in items_on_page:
+            href = a.get("href", "")
+            if not href or href in seen_urls:
+                continue
+            seen_urls.add(href)
+            raw_title = a.get_text(strip=True)
+            # Extract "Month DD, YYYY: Real title"
+            m = _re.match(r"^([A-Z][a-z]+ \d{1,2},\s*\d{4}):\s*(.*)", raw_title)
+            if m:
+                date_str = m.group(1)
+                title = m.group(2).strip()
+            else:
+                date_str = None
+                title = raw_title
+            # Normalize date to check cutoff
+            norm = normalize_date(date_str) if date_str else None
+            if norm and norm < cutoff:
+                continue
+            page_had_recent = True
+            results.append({"title": title, "url": href, "date": date_str})
+
+        if not page_had_recent:
+            break  # all items on this page are older than cutoff
+
+    return results
+
+
 def fetch_vicpd_items() -> list[dict]:
     """Fetch Victoria Police Department news from Ghost CMS tag feed.
 
@@ -901,6 +962,8 @@ def scrape_site(
             raw_links = fetch_nelson_items()
         elif "engagement.vicpd.ca" in url:
             raw_links = fetch_vicpd_items()
+        elif "stlatlimxpolice.ca" in url:
+            raw_links = fetch_stlatlimx_items()
         else:
             resp = requests.get(
                 url,

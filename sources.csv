@@ -16,6 +16,7 @@ Brantford Police Service,https://www.brantfordpolice.ca/news-and-media-releases/
 Bridgewater Police Department,https://www.bridgewaterpolice.ca/news-room,a[href*="/news-room/"],,Nova Scotia
 Brockville Police,https://brockvillepolice.com/news/,.entry-title a,time,Ontario
 Calgary Police Service,https://newsroom.calgary.ca/police-news-releases/,a.ppUnit,.pp-newsreel-list__date,Alberta
+Camrose Police Service,https://www.camrosepolice.ca/police-news/,h3.elementor-post__title a,,Alberta
 Cape Breton Regional Police,https://www.cbrps.ca/media-releases/,HEADING:div.item-content,,Nova Scotia
 Central Saanich Police Service,https://www.cspolice.ca/news,.views-field-title h3 a,time,British Columbia
 Chatham-Kent Police Service,https://ckpolice.com/daily-news-release/,h2 a[href*="release"],time,Ontario
@@ -35,6 +36,7 @@ Oak Bay Police Department,https://oakbaypolice.org/community-news/,h2.entry-titl
 New Westminster Police Department,https://www.nwpolice.org/news-media/media-releases/,h3 a,time,British Columbia
 Port Moody Police Department,https://www.portmoodypolice.com/news-and-statistics/news/,a.gs-feed-list-title,,British Columbia
 Saanich Police Department,https://saanichpolice.ca/our-organization/news-releases/,h2.entry-title a,span.published,British Columbia
+St'atlimx Tribal Police Service,https://stlatlimxpolice.ca/?page_id=504,,,British Columbia
 Nishnawbe-Aski Police Service,https://www.naps.ca/news/,.post-title a,,Ontario
 London Police Service,https://www.londonpolice.ca/news/general-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
 Ontario Provincial Police,https://www.opp.ca/news/,,,Ontario
