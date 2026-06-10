@@ -28,6 +28,8 @@ DATA_DIR = BASE_DIR / "data"
 ARCHIVE_DIR = DATA_DIR / "archive"
 TPS_NDJSON = DATA_DIR / "tps_calls.ndjson"
 SEEN_ITEMS_FILE = DATA_DIR / "seen_items.json"
+FACEBOOK_TOKEN_FILE = BASE_DIR / "facebook_api_token.txt"
+FACEBOOK_API_BASE = "https://graph.facebook.com/v20.0"
 
 USER_AGENT = (
     "Mozilla/5.0 (compatible; PoliceScout/1.0; +https://github.com)"
@@ -1025,6 +1027,79 @@ def extract_links_title_from_heading(
     return results
 
 
+def fetch_facebook_items(page_url: str, cutoff_days: int = 365) -> list[dict]:
+    """Fetch posts from a public Facebook page via the Graph API.
+
+    Requires facebook_api_token.txt containing APP_ID|APP_SECRET.
+    Returns empty list (no error) if token file is missing.
+    """
+    import re as _re
+    from datetime import date as _date, timedelta as _timedelta
+
+    if not FACEBOOK_TOKEN_FILE.exists():
+        return []
+    token = FACEBOOK_TOKEN_FILE.read_text().strip()
+
+    m = _re.search(r"facebook\.com/([^/?#]+)", page_url)
+    if not m:
+        raise ValueError(f"Cannot parse Facebook page slug from: {page_url}")
+    page_slug = m.group(1).rstrip("/")
+
+    # Resolve page slug → numeric page ID
+    id_resp = requests.get(
+        f"{FACEBOOK_API_BASE}/{page_slug}",
+        params={"fields": "id,name", "access_token": token},
+        timeout=15,
+    )
+    id_resp.raise_for_status()
+    page_id = id_resp.json()["id"]
+
+    cutoff = (_date.today() - _timedelta(days=cutoff_days)).isoformat()
+    results: list[dict] = []
+    endpoint: str | None = f"{FACEBOOK_API_BASE}/{page_id}/posts"
+    params: dict = {
+        "fields": "message,created_time,permalink_url",
+        "limit": 25,
+        "access_token": token,
+    }
+
+    while endpoint:
+        resp = requests.get(endpoint, params=params, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        hit_cutoff = False
+
+        for post in data.get("data", []):
+            message = (post.get("message") or "").strip()
+            if not message:
+                continue  # skip image-only / link-only posts
+            created = post["created_time"][:10]  # YYYY-MM-DD
+            if created < cutoff:
+                hit_cutoff = True
+                break
+            # First non-empty line as title, capped at 120 chars
+            title = next(
+                (ln.strip() for ln in message.splitlines() if ln.strip()),
+                message[:120],
+            )
+            if len(title) > 120:
+                title = title[:117] + "..."
+            results.append({
+                "title": title,
+                "url": post.get("permalink_url") or page_url,
+                "date": created,
+                "content": message,
+            })
+
+        if hit_cutoff:
+            break
+        # paging.next is a full URL with all params already embedded
+        endpoint = data.get("paging", {}).get("next")
+        params = {}
+
+    return results
+
+
 def scrape_site(
     service_name: str,
     url: str,
@@ -1040,7 +1115,9 @@ def scrape_site(
     from urllib.parse import urljoin, urlparse
     try:
         # Special cases: sites that require custom fetching
-        if "opp.ca" in url:
+        if "facebook.com" in url:
+            raw_links = fetch_facebook_items(url)
+        elif "opp.ca" in url:
             raw_links = fetch_opp_items()
         elif "rcmp.ca" in url:
             raw_links = fetch_rcmp_items()
