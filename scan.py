@@ -421,11 +421,13 @@ _NOISE_LINE_PATTERNS = [
 
 _CONTENT_FOOTER_MARKERS = (
     "\nRelated Stories",
+    "\nRelated News\n",
     "\nDownload Media Kit",
     "\nSubscribe to News\n",
     "\nSubscribe to this page",
     "\nShow More\nABOUT US",
     "\nABOUT US\nUNITS",
+    "\nShare Story\nFacebook\n",
 )
 
 
@@ -461,6 +463,13 @@ def clean_content(text: str, title: str = "") -> str:
             text = text[newline_after + 1:] if newline_after != -1 else text[idx + len(title.strip()):]
             # Strip "Official News Release Download" immediately after the title
             text = _re.sub(r"^Official News Release Download\s*\n", "", text)
+
+    # Strip VPD-style byline: Author\nISO-timestamp\nDate\n|\nCategory\n|
+    text = _re.sub(
+        r"^[A-Za-z ]+\n\d{4}-\d{2}-\d{2}T[^\n]+\n[^\n]+\n\|\n[^\n]+\n\|\n",
+        "",
+        text,
+    )
 
     # Strip GovDelivery/CivicPlus byline block that follows the title:
     #   "By\n[Service Name]\n-\n[Date]\n[optional category lines]"
