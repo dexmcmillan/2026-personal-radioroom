@@ -525,6 +525,9 @@ def clean_content(text: str, title: str = "") -> str:
     # Join name+comma breaks: "LASTNAME\n, age 38" → "LASTNAME, age 38"
     text = _re.sub(r"\n, ", ", ", text)
 
+    # Collapse space/newline before ordinal suffixes from <sup> extraction: "26 th" / "26\nth" → "26th"
+    text = _re.sub(r"(\d)[ \n](st|nd|rd|th)\b", r"\1\2", text)
+
     # Strip Bridgewater/GovDelivery release header block
     # "News Room\nFor Immediate Release\nBridgewater Police Service – Media Release\nDate: ...\nSubject: ..."
     text = _re.sub(
