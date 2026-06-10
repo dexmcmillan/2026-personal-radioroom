@@ -424,6 +424,8 @@ _CONTENT_FOOTER_MARKERS = (
     "\nDownload Media Kit",
     "\nSubscribe to News\n",
     "\nSubscribe to this page",
+    "\nShow More\nABOUT US",
+    "\nABOUT US\nUNITS",
 )
 
 

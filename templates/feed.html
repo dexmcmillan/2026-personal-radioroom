@@ -446,7 +446,9 @@
           ? '<a href="' + esc(item.url) + '" target="_blank" rel="noopener">' + esc(item.title) + ' →</a>'
           : esc(item.title || '');
         var snippetHtml = item.content
-          ? '<div class="feed-snippet">' + esc(item.content) + '</div>'
+          ? '<div class="feed-snippet">' + esc(item.content
+              .replace(/([.!?"])\n/g, '$1\n\n')
+              .replace(/([^\n])\n([^\n])/g, '$1 $2')) + '</div>'
           : '';
         div.innerHTML =
           '<div class="feed-time">' + esc(formatDate(item.date)) + '</div>' +
