@@ -120,6 +120,13 @@ def normalize_date(date_str: str | None) -> str | None:
             return datetime.strptime(date_str.strip()[:20], fmt).date().isoformat()
         except ValueError:
             continue
+    # DD.MM.YY format (e.g. "09.06.26" from MHPS)
+    m = _re.match(r"^(\d{2})\.(\d{2})\.(\d{2})$", date_str.strip())
+    if m:
+        try:
+            return datetime.strptime(date_str.strip(), "%d.%m.%y").date().isoformat()
+        except ValueError:
+            pass
     return None
 
 
@@ -428,6 +435,7 @@ _CONTENT_FOOTER_MARKERS = (
     "\nShow More\nABOUT US",
     "\nABOUT US\nUNITS",
     "\nShare Story\n",
+    "\nPreparing your download...\n",
 )
 
 
@@ -464,6 +472,17 @@ def clean_content(text: str, title: str = "") -> str:
             # Strip "Official News Release Download" immediately after the title
             text = _re.sub(r"^Official News Release Download\s*\n", "", text)
 
+    # Second title-strip pass: some CMS templates (e.g. ALERT) repeat the title after the date
+    if title:
+        idx2 = text.find(title.strip())
+        if 0 <= idx2 < 200:
+            newline_after2 = text.find("\n", idx2 + len(title.strip()))
+            text = text[newline_after2 + 1:] if newline_after2 != -1 else text[idx2 + len(title.strip()):]
+
+    # Strip leading category/city header fragments from Elementor "read more" widgets
+    # Handles: "City\nCity…\n" and "City| Category\nCity…\n"
+    text = _re.sub(r"^([A-Za-z][A-Za-z ]{0,29})(?:\| [^\n]*)?\n\1[…\.]+\n", "", text)
+
     # Strip RCMP header: everything up to and including "On this page\nContent\nContacts\nContent\n"
     _rcmp_marker = "On this page\nContent\nContacts\nContent\n"
     _rcmp_idx = text.find(_rcmp_marker)
@@ -497,6 +516,9 @@ def clean_content(text: str, title: str = "") -> str:
         idx = text.find(marker)
         if idx != -1:
             text = text[:idx]
+
+    # Strip Calgary PressPoint attachment filename lines (e.g. "CA26249031_\nCA26249031.JPG_")
+    text = _re.sub(r"\n[A-Za-z0-9 ._-]+_(\n|$)", "\n", text)
 
     text = _re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()

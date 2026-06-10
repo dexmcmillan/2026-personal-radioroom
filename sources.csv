@@ -18,6 +18,9 @@ Brockville Police,https://brockvillepolice.com/news/,.entry-title a,time,Ontario
 Calgary Police Service,https://newsroom.calgary.ca/police-news-releases/,a.ppUnit,.pp-newsreel-list__date,Alberta
 Camrose Police Service,https://www.camrosepolice.ca/police-news/,h3.elementor-post__title a,,Alberta
 Lethbridge Police Service,https://www.lethbridgepolice.ca/news/,a.gs-feed-list-title,span.gs-feed-list-date,Alberta
+Medicine Hat Police Service,https://mhps.ca/posts/category/media-release,h3.project-title a,span.article-date-small,Alberta
+ALERT - Alberta Law Enforcement Response Teams,https://alert-ab.ca/news-centre/,h3 a,span.elementor-post-date,Alberta
+Grande Prairie Police Service,https://www.gppolice.com/news,h3.card__title a,.field--name-field-date,Alberta
 Cape Breton Regional Police,https://www.cbrps.ca/media-releases/,HEADING:div.item-content,,Nova Scotia
 Central Saanich Police Service,https://www.cspolice.ca/news,.views-field-title h3 a,time,British Columbia
 Chatham-Kent Police Service,https://ckpolice.com/daily-news-release/,h2 a[href*="release"],time,Ontario
