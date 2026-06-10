@@ -449,7 +449,7 @@
         var snippetHtml = item.content
           ? '<div class="feed-snippet">' + esc(item.content
               .replace(/([.!?"])\n([^\n])/g, '$1\n\n$2')
-              .replace(/([^\n])\n([a-z("])/g, '$1 $2')) + '</div>'
+              .replace(/([^\n])\n([a-z0-9("])/g, '$1 $2')) + '</div>'
           : '';
         div.innerHTML =
           '<div class="feed-time">' + esc(formatDate(item.date)) + '</div>' +

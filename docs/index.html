@@ -468,6 +468,13 @@
             📄 Edmonton Police Service
           </div>
           
+          <div class="tree-service"
+               data-service="Lethbridge Police Service"
+               data-path="alberta/lethbridge-police-service"
+               onclick="selectService(this)">
+            📄 Lethbridge Police Service
+          </div>
+          
         </div>
       </div>
       
@@ -743,9 +750,9 @@
     <div class="modal">
       <button class="modal-close" onclick="toggleModal(false)">[x]</button>
       <h2>// TGAM Radio Room</h2>
-      <p>TGAM Radio Room monitors 49 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
+      <p>TGAM Radio Room monitors 50 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
-      <p>Updated: June 10, 2026 at 08:49 EDT</p>
+      <p>Updated: June 10, 2026 at 08:52 EDT</p>
     </div>
   </div>
 
@@ -851,7 +858,7 @@
         var snippetHtml = item.content
           ? '<div class="feed-snippet">' + esc(item.content
               .replace(/([.!?"])\n([^\n])/g, '$1\n\n$2')
-              .replace(/([^\n])\n([a-z("])/g, '$1 $2')) + '</div>'
+              .replace(/([^\n])\n([a-z0-9("])/g, '$1 $2')) + '</div>'
           : '';
         div.innerHTML =
           '<div class="feed-time">' + esc(formatDate(item.date)) + '</div>' +
