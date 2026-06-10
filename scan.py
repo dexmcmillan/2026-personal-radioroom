@@ -436,6 +436,7 @@ _CONTENT_FOOTER_MARKERS = (
     "\nABOUT US\nUNITS",
     "\nShare Story\n",
     "\nPreparing your download...\n",
+    "\nAbout Us\nOur People\n",
 )
 
 
