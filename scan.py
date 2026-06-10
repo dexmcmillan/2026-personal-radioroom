@@ -427,7 +427,7 @@ _CONTENT_FOOTER_MARKERS = (
     "\nSubscribe to this page",
     "\nShow More\nABOUT US",
     "\nABOUT US\nUNITS",
-    "\nShare Story\nFacebook\n",
+    "\nShare Story\n",
 )
 
 
