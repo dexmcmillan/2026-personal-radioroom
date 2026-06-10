@@ -5,7 +5,7 @@ Altona Police Service,https://altona.ca/m/altona-police-service/local-notices,ul
 Amherst Police Department,https://www.amherst.ca/town-news/media-releases/,HEADING:div.blog-item,,Nova Scotia
 Amherstburg Police Service,https://windsorpolice.ca/newsroom/,HEADING:div.search-result,,Ontario
 Anishinabek Police Service,https://www.anishinabekpolice.ca/news,li.post-card h2 a,.fusion-tb-published-date,Ontario
-Annapolis Royal Police Department,https://annapolisroyal.com/police/,,,Nova Scotia
+Combined Forces Special Enforcement Unit BC,https://cfseu.bc.ca/blog-streampage/,article.category-press-releases h2.post_title a,,British Columbia
 Aylmer Police,https://www.aylmerpolice.com/events,,,Ontario
 Barrie Police Service,https://www.barriepolice.ca/newsroom/,h3.fl-post-title a,.fl-post-meta,Ontario
 Bathurst Police Force,https://www.bathurst.ca/en/services/1/bathurst-police-force,,,New Brunswick
@@ -42,5 +42,7 @@ Ottawa Police Service,https://ottawapolice.news.esolg.ca/,a.newsTitle,.blogPostD
 Peel Regional Police,https://www.peelpolice.ca/news-feed/news-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
 RCMP,https://rcmp.ca/en/news,,,National
 Vancouver Police Department,https://vpd.ca/news/,,,British Columbia
+Metro Vancouver Transit Police,https://transitpolice.ca/news/news-releases/,a.bde-text-link,span.ee-postmeta-date,British Columbia
 Victoria Police Department,https://engagement.vicpd.ca/tag/news-releases/,,,British Columbia
+West Vancouver Police Department,https://westvanpolice.ca/media-releases/,h1.elementor-heading-title a,time,British Columbia
 Winnipeg Police Service,https://www.winnipeg.ca/police/community/news-releases,,,Manitoba
