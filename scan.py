@@ -440,6 +440,7 @@ _NOISE_LINE_PATTERNS = [
 ]
 
 _CONTENT_FOOTER_MARKERS = (
+    "\n-30-",
     "\nRelated Stories",
     "\nRelated News\n",
     "\nDownload Media Kit",
