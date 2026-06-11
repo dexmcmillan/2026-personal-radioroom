@@ -1,54 +1,62 @@
-Name of police service,url,link_selector,date_selector,province
-Abbotsford Police Department,https://www.abbypd.ca/blog/news_releases,a.blog-post-title,,British Columbia
-Akwesasne Mohawk Police Service,https://akwesasnepolice.ca/news-and-updates/,article h2 a,time,Ontario
-Altona Police Service,https://altona.ca/m/altona-police-service/local-notices,ul.notices a,time,Manitoba
-Amherst Police Department,https://www.amherst.ca/town-news/media-releases/,HEADING:div.blog-item,,Nova Scotia
-Amherstburg Police Service,https://windsorpolice.ca/newsroom/,HEADING:div.search-result,,Ontario
-Anishinabek Police Service,https://www.anishinabekpolice.ca/news,li.post-card h2 a,.fusion-tb-published-date,Ontario
-Combined Forces Special Enforcement Unit BC,https://cfseu.bc.ca/blog-streampage/,article.category-press-releases h2.post_title a,,British Columbia
-Aylmer Police,https://www.aylmerpolice.com/events,,,Ontario
-Barrie Police Service,https://www.barriepolice.ca/newsroom/,h3.fl-post-title a,.fl-post-meta,Ontario
-Bathurst Police Force,https://www.bathurst.ca/en/services/1/bathurst-police-force,,,New Brunswick
-Belleville Police Service,https://www.bellevilleps.ca/news-stories/,article h3 a,time,Ontario
-Blood Tribe Police Service,https://www.bloodtribepolice.com/,,,Alberta
-Brandon Police Service,https://www.brandon.ca/news/police-media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Manitoba
-Brantford Police Service,https://www.brantfordpolice.ca/news-and-media-releases/categories/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-Bridgewater Police Department,https://www.bridgewaterpolice.ca/news-room,a[href*="/news-room/"],,Nova Scotia
-Brockville Police,https://brockvillepolice.com/news/,.entry-title a,time,Ontario
-Calgary Police Service,https://newsroom.calgary.ca/police-news-releases/,a.ppUnit,.pp-newsreel-list__date,Alberta
-Camrose Police Service,https://www.camrosepolice.ca/police-news/,h3.elementor-post__title a,,Alberta
-Lethbridge Police Service,https://www.lethbridgepolice.ca/news/,a.gs-feed-list-title,span.gs-feed-list-date,Alberta
-Medicine Hat Police Service,https://mhps.ca/posts/category/media-release,h3.project-title a,span.article-date-small,Alberta
-ALERT - Alberta Law Enforcement Response Teams,https://alert-ab.ca/news-centre/,h3 a,span.elementor-post-date,Alberta
-Grande Prairie Police Service,https://www.gppolice.com/news,h3.card__title a,.field--name-field-date,Alberta
-Cape Breton Regional Police,https://www.cbrps.ca/media-releases/,HEADING:div.item-content,,Nova Scotia
-Central Saanich Police Service,https://www.cspolice.ca/news,.views-field-title h3 a,time,British Columbia
-Chatham-Kent Police Service,https://ckpolice.com/daily-news-release/,h2 a[href*="release"],time,Ontario
-Cobourg Police Service,https://cobourgpoliceservice.com/category/news/,.entry-title a,time,Ontario
-Cornwall Community Police Service,https://cornwallpolice.ca/news,div.card h4 a,,Ontario
-Delta Police Department,https://www.deltapolice.ca/media/releases,a.news-item__link,.news-item__date,British Columbia
-Durham Regional Police Service,https://www.drps.ca/news/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-Edmonton Police Service,https://www.edmontonpolice.ca/News/MediaReleases,h2 a[href*="MediaReleases/"],,Alberta
-Fredericton Police Force,https://www.fredericton.ca/your-government/news,article h3 a,time,New Brunswick
-Greater Sudbury Police Service,https://www.gsps.ca/Modules/News/en,h2 a[href*="news"],.field-content,Ontario
-Guelph Police Service,https://www.guelphpolice.ca/news/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-Halifax Regional Police,https://www.halifax.ca/home/news?category=25,a.c-news-updates__list-item-link,.c-news-updates__date,Nova Scotia
-Halton Regional Police Service,https://www.haltonpolice.ca/news-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-Hamilton Police Service,https://hamiltonpolice.on.ca/news/?h=1&t=media,h3.pp_bigheadlines_heading a,.pp_bigheadlines_date,Ontario
-Nelson Police Department,https://www.nelson.ca/CivicAlerts.aspx?CID=7,,,British Columbia
-Oak Bay Police Department,https://oakbaypolice.org/community-news/,h2.entry-title a,,British Columbia
-New Westminster Police Department,https://www.nwpolice.org/news-media/media-releases/,h3 a,time,British Columbia
-Port Moody Police Department,https://www.portmoodypolice.com/news-and-statistics/news/,a.gs-feed-list-title,,British Columbia
-Saanich Police Department,https://saanichpolice.ca/our-organization/news-releases/,h2.entry-title a,span.published,British Columbia
-St'atlimx Tribal Police Service,https://stlatlimxpolice.ca/?page_id=504,,,British Columbia
-Nishnawbe-Aski Police Service,https://www.naps.ca/news/,.post-title a,,Ontario
-London Police Service,https://www.londonpolice.ca/news/general-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-Ontario Provincial Police,https://www.opp.ca/news/,,,Ontario
-Ottawa Police Service,https://ottawapolice.news.esolg.ca/,a.newsTitle,.blogPostDate,Ontario
-Peel Regional Police,https://www.peelpolice.ca/news-feed/news-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario
-RCMP,https://rcmp.ca/en/news,,,National
-Vancouver Police Department,https://vpd.ca/news/,,,British Columbia
-Metro Vancouver Transit Police,https://transitpolice.ca/news/news-releases/,a.bde-text-link,span.ee-postmeta-date,British Columbia
-Victoria Police Department,https://engagement.vicpd.ca/tag/news-releases/,,,British Columbia
-West Vancouver Police Department,https://westvanpolice.ca/media-releases/,h1.elementor-heading-title a,time,British Columbia
-Winnipeg Police Service,https://www.winnipeg.ca/police/community/news-releases,,,Manitoba
+Name of police service,url,link_selector,date_selector,province,status,notes
+Abbotsford Police Department,https://www.abbypd.ca/blog/news_releases,a.blog-post-title,,British Columbia,active,
+Akwesasne Mohawk Police Service,https://akwesasnepolice.ca/news-and-updates/,article h2 a,time,Ontario,active,
+Altona Police Service,https://altona.ca/m/altona-police-service/local-notices,ul.notices a,time,Manitoba,active,
+Amherst Police Department,https://www.amherst.ca/town-news/media-releases/,HEADING:div.blog-item,,Nova Scotia,active,
+Amherstburg Police Service,https://windsorpolice.ca/newsroom/,HEADING:div.search-result,,Ontario,active,
+Anishinabek Police Service,https://www.anishinabekpolice.ca/news,li.post-card h2 a,.fusion-tb-published-date,Ontario,active,
+Combined Forces Special Enforcement Unit BC,https://cfseu.bc.ca/blog-streampage/,article.category-press-releases h2.post_title a,,British Columbia,active,
+Aylmer Police,https://www.aylmerpolice.com/events,,,Ontario,active,
+Barrie Police Service,https://www.barriepolice.ca/newsroom/,h3.fl-post-title a,.fl-post-meta,Ontario,active,
+Bathurst Police Force,https://www.bathurst.ca/en/services/1/bathurst-police-force,,,New Brunswick,active,
+Belleville Police Service,https://www.bellevilleps.ca/news-stories/,article h3 a,time,Ontario,active,
+Blood Tribe Police Service,https://www.bloodtribepolice.com/news-and-events,h3 a,.authorBar span:last-child,Alberta,active,
+Brandon Police Service,https://www.brandon.ca/news/police-media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Manitoba,active,
+Brantford Police Service,https://www.brantfordpolice.ca/news-and-media-releases/categories/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Bridgewater Police Department,https://www.bridgewaterpolice.ca/news-room,"a[href*=""/news-room/""]",,Nova Scotia,active,
+Brockville Police,https://brockvillepolice.com/news/,.entry-title a,time,Ontario,active,
+Calgary Police Service,https://newsroom.calgary.ca/police-news-releases/,a.ppUnit,.pp-newsreel-list__date,Alberta,active,
+Camrose Police Service,https://www.camrosepolice.ca/police-news/,h3.elementor-post__title a,,Alberta,active,
+Lethbridge Police Service,https://www.lethbridgepolice.ca/news/,a.gs-feed-list-title,span.gs-feed-list-date,Alberta,active,
+Medicine Hat Police Service,https://mhps.ca/posts/category/media-release,h3.project-title a,span.article-date-small,Alberta,active,
+ALERT - Alberta Law Enforcement Response Teams,https://alert-ab.ca/news-centre/,h3 a,span.elementor-post-date,Alberta,active,
+Grande Prairie Police Service,https://www.gppolice.com/news,h3.card__title a,.field--name-field-date,Alberta,active,
+Cape Breton Regional Police,https://www.cbrps.ca/media-releases/,HEADING:div.item-content,,Nova Scotia,active,
+Charlottetown Police Service,https://charlottetownpolice.com/category/news-releases/,h2 a,.post-date,Prince Edward Island,active,
+Central Saanich Police Service,https://www.cspolice.ca/news,.views-field-title h3 a,time,British Columbia,active,
+Chatham-Kent Police Service,https://ckpolice.com/daily-news-release/,"h2 a[href*=""release""]",time,Ontario,active,
+Cobourg Police Service,https://cobourgpoliceservice.com/category/news/,.entry-title a,time,Ontario,active,
+Cornwall Community Police Service,https://cornwallpolice.ca/news,div.card h4 a,,Ontario,active,
+Delta Police Department,https://www.deltapolice.ca/media/releases,a.news-item__link,.news-item__date,British Columbia,active,
+Durham Regional Police Service,https://www.drps.ca/news/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Edmonton Police Service,https://www.edmontonpolice.ca/News/MediaReleases,"h2 a[href*=""MediaReleases/""]",,Alberta,active,
+Fredericton Police Force,https://www.fredericton.ca/your-government/news,article h3 a,time,New Brunswick,active,
+Greater Sudbury Police Service,https://www.gsps.ca/Modules/News/en,"h2 a[href*=""news""]",.field-content,Ontario,active,
+Guelph Police Service,https://www.guelphpolice.ca/news/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Halifax Regional Police,https://www.halifax.ca/home/news?category=25,a.c-news-updates__list-item-link,.c-news-updates__date,Nova Scotia,active,
+Halton Regional Police Service,https://www.haltonpolice.ca/news-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Hamilton Police Service,https://hamiltonpolice.on.ca/news/?h=1&t=media,h3.pp_bigheadlines_heading a,.pp_bigheadlines_date,Ontario,active,
+Nelson Police Department,https://www.nelson.ca/CivicAlerts.aspx?CID=7,,,British Columbia,active,
+Oak Bay Police Department,https://oakbaypolice.org/community-news/,h2.entry-title a,,British Columbia,active,
+New Westminster Police Department,https://www.nwpolice.org/news-media/media-releases/,h3 a,time,British Columbia,active,
+Port Moody Police Department,https://www.portmoodypolice.com/news-and-statistics/news/,a.gs-feed-list-title,,British Columbia,active,
+Saanich Police Department,https://saanichpolice.ca/our-organization/news-releases/,h2.entry-title a,span.published,British Columbia,active,
+St'atlimx Tribal Police Service,https://stlatlimxpolice.ca/?page_id=504,,,British Columbia,active,
+Nishnawbe-Aski Police Service,https://www.naps.ca/news/,.post-title a,,Ontario,active,
+London Police Service,https://www.londonpolice.ca/news/general-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Ontario Provincial Police,https://www.opp.ca/news/,,,Ontario,active,
+Ottawa Police Service,https://ottawapolice.news.esolg.ca/,a.newsTitle,.blogPostDate,Ontario,active,
+Peel Regional Police,https://www.peelpolice.ca/news-feed/news-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+RCMP,https://rcmp.ca/en/news,,,National,active,
+Vancouver Police Department,https://vpd.ca/news/,,,British Columbia,active,
+Metro Vancouver Transit Police,https://transitpolice.ca/news/news-releases/,a.bde-text-link,span.ee-postmeta-date,British Columbia,active,
+Victoria Police Department,https://engagement.vicpd.ca/tag/news-releases/,,,British Columbia,active,
+West Vancouver Police Department,https://westvanpolice.ca/media-releases/,h1.elementor-heading-title a,time,British Columbia,active,
+Winnipeg Police Service,https://www.winnipeg.ca/police/community/news-releases,,,Manitoba,active,
+Sûreté du Québec (Actualités),https://www.sq.gouv.qc.ca/actualites/,h3 a,.loop-date,Quebec,active,
+Sûreté du Québec (Communiqués),https://www.sq.gouv.qc.ca/communiques/,h3 a,.loop-date,Quebec,active,
+Sûreté du Québec (Recherches),https://www.sq.gouv.qc.ca/recherches/,h2 a,,Quebec,active,
+Sûreté du Québec (Disparus),https://www.sq.gouv.qc.ca/disparus/,h2 a,,Quebec,active,
+Saskatoon Police Service,https://saskatoonpolice.ca/news/,"ul li a[href^=""/news/20""]",time,Saskatchewan,active,
+Saskatchewan Marshals Service,https://www.skmarshals.ca/news-and-media,div.link-headline a,time,Saskatchewan,active,
+Regina Police Service,https://www.reginapolice.ca/news/,h3 a,.elementor-post-date,Saskatchewan,active,

@@ -61,7 +61,8 @@ def load_sources() -> list[dict]:
         for row in reader:
             name = row["Name of police service"].strip()
             url = row["url"].strip()
-            if name and url:
+            status = row.get("status", "active").strip() or "active"
+            if name and url and status == "active":
                 sources.append({
                     "name": name,
                     "url": url,
@@ -73,8 +74,8 @@ def load_sources() -> list[dict]:
 
 
 _PROVINCE_ORDER = [
-    "National", "British Columbia", "Alberta", "Manitoba",
-    "Ontario", "New Brunswick", "Nova Scotia",
+    "National", "British Columbia", "Alberta", "Saskatchewan", "Manitoba",
+    "Ontario", "Quebec", "New Brunswick", "Nova Scotia", "Prince Edward Island",
 ]
 
 PRESS_RELEASE_KEYWORDS = (
@@ -115,7 +116,7 @@ def normalize_date(date_str: str | None) -> str | None:
     import re as _re
     date_str = _re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", date_str.strip())
     # Human-readable formats
-    for fmt in ("%b %d, %Y", "%B %d, %Y", "%d %B %Y", "%B %d %Y", "%b %d %Y"):
+    for fmt in ("%b %d, %Y", "%B %d, %Y", "%d %B %Y", "%B %d %Y", "%b %d %Y", "%b-%d-%Y", "%b-%m-%Y"):
         try:
             return datetime.strptime(date_str.strip()[:20], fmt).date().isoformat()
         except ValueError:
@@ -543,6 +544,8 @@ def clean_content(text: str, title: str = "") -> str:
     text = _re.sub(r"\n[A-Za-z0-9 ._-]+_(\n|$)", "\n", text)
 
     text = _re.sub(r"\n{3,}", "\n\n", text)
+    # Collapse runs of spaces/tabs (CMS layout artefacts from table/float-based HTML)
+    text = _re.sub(r"[ \t]{2,}", " ", text)
     return text.strip()
 
 

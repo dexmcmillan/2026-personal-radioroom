@@ -221,14 +221,12 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       white-space: pre-wrap;
     }
-    #feed-empty {
-      display: none;
-      padding: 60px 20px;
+    #loading, .feed-empty {
+      padding: 40px;
       text-align: center;
       color: #484f58;
       font-size: 0.8rem;
     }
-    #loading { padding: 40px; text-align: center; color: #484f58; font-size: 0.8rem; }
     @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
     .blink { animation: blink 1s step-end infinite; }
 
@@ -331,7 +329,6 @@
         <span id="count"></span>
       </div>
       <div id="feed"><div class="feed-inner"><div id="loading">loading<span class="blink">_</span></div></div></div>
-      <div id="feed-empty">no releases found_</div>
     </div>
 
   </div>
@@ -359,7 +356,6 @@
       var feedInnerEl = feedEl.querySelector('.feed-inner');
       var sentinelEl  = document.createElement('div');
       sentinelEl.style.height = '1px';
-      var emptyEl     = document.getElementById('feed-empty');
       var searchEl    = document.getElementById('search');
       var clockEl     = document.getElementById('clock');
       var breadcrumbEl = document.getElementById('breadcrumb-path');
@@ -499,11 +495,12 @@
         feedInnerEl.innerHTML = '';
         renderedCount = 0;
         if (currentFiltered.length === 0) {
-          emptyEl.style.display = 'block';
+          var msg = q ? 'no results_' : 'no recent releases_';
+          feedInnerEl.innerHTML = '<div class="feed-empty">' + msg + '<span class="blink">​</span></div>';
           sentinelEl.style.display = 'none';
+          feedEl.scrollTop = 0;
           updateCount();
         } else {
-          emptyEl.style.display = 'none';
           appendNextPage();
         }
       }
