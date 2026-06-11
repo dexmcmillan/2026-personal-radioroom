@@ -302,6 +302,7 @@
     <div class="sidebar">
       <div class="sidebar-label">Services</div>
       <div class="all-releases active" onclick="selectAll(this)">◈ All Releases</div>
+      <div class="all-releases" onclick="selectLatest(this)">◈ Latest</div>
       <hr class="sidebar-divider">
       
       <div class="tree-item">
@@ -408,6 +409,13 @@
           </div>
           
           <div class="tree-service"
+               data-service="Surrey Police Service"
+               data-path="british-columbia/surrey-police-service"
+               onclick="selectService(this)">
+            📄 Surrey Police Service
+          </div>
+          
+          <div class="tree-service"
                data-service="Vancouver Police Department"
                data-path="british-columbia/vancouver-police-department"
                onclick="selectService(this)">
@@ -505,6 +513,13 @@
           Saskatchewan
         </div>
         <div class="tree-children">
+          
+          <div class="tree-service"
+               data-service="Moose Jaw Police Service"
+               data-path="saskatchewan/moose-jaw-police-service"
+               onclick="selectService(this)">
+            📄 Moose Jaw Police Service
+          </div>
           
           <div class="tree-service"
                data-service="Regina Police Service"
@@ -683,10 +698,24 @@
           </div>
           
           <div class="tree-service"
+               data-service="Kingston Police"
+               data-path="ontario/kingston-police"
+               onclick="selectService(this)">
+            📄 Kingston Police
+          </div>
+          
+          <div class="tree-service"
                data-service="London Police Service"
                data-path="ontario/london-police-service"
                onclick="selectService(this)">
             📄 London Police Service
+          </div>
+          
+          <div class="tree-service"
+               data-service="Niagara Regional Police Service"
+               data-path="ontario/niagara-regional-police-service"
+               onclick="selectService(this)">
+            📄 Niagara Regional Police Service
           </div>
           
           <div class="tree-service"
@@ -715,6 +744,13 @@
                data-path="ontario/peel-regional-police"
                onclick="selectService(this)">
             📄 Peel Regional Police
+          </div>
+          
+          <div class="tree-service"
+               data-service="Thunder Bay Police Service"
+               data-path="ontario/thunder-bay-police-service"
+               onclick="selectService(this)">
+            📄 Thunder Bay Police Service
           </div>
           
           <div class="tree-service"
@@ -781,6 +817,13 @@
             📄 Fredericton Police Force
           </div>
           
+          <div class="tree-service"
+               data-service="Saint John Police Force"
+               data-path="new-brunswick/saint-john-police-force"
+               onclick="selectService(this)">
+            📄 Saint John Police Force
+          </div>
+          
         </div>
       </div>
       
@@ -841,6 +884,24 @@
         </div>
       </div>
       
+      <div class="tree-item">
+        <div class="tree-folder" onclick="toggleFolder(this)">
+          <span class="tree-arrow">▶</span>
+          <span class="folder-icon">📁</span>
+          Newfoundland and Labrador
+        </div>
+        <div class="tree-children">
+          
+          <div class="tree-service"
+               data-service="Royal Newfoundland Constabulary"
+               data-path="newfoundland-and-labrador/royal-newfoundland-constabulary"
+               onclick="selectService(this)">
+            📄 Royal Newfoundland Constabulary
+          </div>
+          
+        </div>
+      </div>
+      
     </div>
 
     <div class="feed-panel">
@@ -858,9 +919,10 @@
     <div class="modal">
       <button class="modal-close" onclick="toggleModal(false)">[x]</button>
       <h2>// TGAM Radio Room</h2>
-      <p>TGAM Radio Room monitors 61 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
+      <p>TGAM Radio Room monitors 68 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
-      <p>Updated: June 11, 2026 at 15:06 EDT</p>
+      <p>This is an internal Globe and Mail tool. For feature requests or to suggest services to add, contact <a href="mailto:dmcmillan@globeandmail.com" style="color:#58a6ff;">dmcmillan@globeandmail.com</a>.</p>
+      <p>Updated: June 11, 2026 at 15:22 EDT</p>
     </div>
   </div>
 
@@ -880,6 +942,8 @@
       var clockEl     = document.getElementById('clock');
       var breadcrumbEl = document.getElementById('breadcrumb-path');
       var countEl     = document.getElementById('count');
+      var isLatestMode = false;
+      var latestFilterDate = null;
 
       // ── Clock ──
       function tick() {
@@ -923,7 +987,19 @@
         clearActive();
         el.classList.add('active');
         selectedService = null;
+        isLatestMode = false;
+        latestFilterDate = null;
         breadcrumbEl.textContent = 'all';
+        applyFilters();
+      }
+
+      function selectLatest(el) {
+        clearActive();
+        el.classList.add('active');
+        selectedService = null;
+        isLatestMode = true;
+        latestFilterDate = null;
+        breadcrumbEl.textContent = 'latest';
         applyFilters();
       }
 
@@ -931,6 +1007,8 @@
         clearActive();
         el.classList.add('active');
         selectedService = el.dataset.service;
+        isLatestMode = false;
+        latestFilterDate = null;
         breadcrumbEl.textContent = el.dataset.path;
         applyFilters();
       }
@@ -1006,11 +1084,20 @@
       // ── Filter ──
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
+        if (isLatestMode && !q) {
+          latestFilterDate = null;
+          for (var i = 0; i < allItems.length; i++) {
+            var d = allItems[i].date;
+            if (d && (!latestFilterDate || d > latestFilterDate)) latestFilterDate = d;
+          }
+          if (latestFilterDate) breadcrumbEl.textContent = 'latest / ' + latestFilterDate;
+        }
         currentFiltered = allItems.filter(function (item) {
-          // search is always global; service filter only applies when not searching
+          // search is always global; service/latest filters only apply when not searching
           var matchesService = q ? true : (!selectedService || item.source === selectedService);
+          var matchesLatest  = q ? true : (!latestFilterDate || item.date === latestFilterDate);
           var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
-          return matchesService && matchesSearch;
+          return matchesService && matchesLatest && matchesSearch;
         });
         feedInnerEl.innerHTML = '';
         renderedCount = 0;
@@ -1041,6 +1128,7 @@
       // ── Expose to inline onclick attrs ──
       window.toggleFolder  = toggleFolder;
       window.selectAll     = selectAll;
+      window.selectLatest  = selectLatest;
       window.selectService = selectService;
       window.toggleModal   = toggleModal;
       window.handleOverlayClick = handleOverlayClick;

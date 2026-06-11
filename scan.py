@@ -30,7 +30,8 @@ TPS_NDJSON = DATA_DIR / "tps_calls.ndjson"
 SEEN_ITEMS_FILE = DATA_DIR / "seen_items.json"
 
 USER_AGENT = (
-    "Mozilla/5.0 (compatible; PoliceScout/1.0; +https://github.com)"
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
 # --- Core utilities ---
@@ -76,6 +77,7 @@ def load_sources() -> list[dict]:
 _PROVINCE_ORDER = [
     "National", "British Columbia", "Alberta", "Saskatchewan", "Manitoba",
     "Ontario", "Quebec", "New Brunswick", "Nova Scotia", "Prince Edward Island",
+    "Newfoundland and Labrador",
 ]
 
 PRESS_RELEASE_KEYWORDS = (

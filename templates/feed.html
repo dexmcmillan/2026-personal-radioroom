@@ -302,6 +302,7 @@
     <div class="sidebar">
       <div class="sidebar-label">Services</div>
       <div class="all-releases active" onclick="selectAll(this)">◈ All Releases</div>
+      <div class="all-releases" onclick="selectLatest(this)">◈ Latest</div>
       <hr class="sidebar-divider">
       {% for province, services in provinces.items() %}
       <div class="tree-item">
@@ -341,6 +342,7 @@
       <h2>// TGAM Radio Room</h2>
       <p>TGAM Radio Room monitors {{ total_services }} Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
+      <p>This is an internal Globe and Mail tool. For feature requests or to suggest services to add, contact <a href="mailto:dmcmillan@globeandmail.com" style="color:#58a6ff;">dmcmillan@globeandmail.com</a>.</p>
       <p>Updated: {{ generated_at }}</p>
     </div>
   </div>
@@ -361,6 +363,8 @@
       var clockEl     = document.getElementById('clock');
       var breadcrumbEl = document.getElementById('breadcrumb-path');
       var countEl     = document.getElementById('count');
+      var isLatestMode = false;
+      var latestFilterDate = null;
 
       // ── Clock ──
       function tick() {
@@ -404,7 +408,19 @@
         clearActive();
         el.classList.add('active');
         selectedService = null;
+        isLatestMode = false;
+        latestFilterDate = null;
         breadcrumbEl.textContent = 'all';
+        applyFilters();
+      }
+
+      function selectLatest(el) {
+        clearActive();
+        el.classList.add('active');
+        selectedService = null;
+        isLatestMode = true;
+        latestFilterDate = null;
+        breadcrumbEl.textContent = 'latest';
         applyFilters();
       }
 
@@ -412,6 +428,8 @@
         clearActive();
         el.classList.add('active');
         selectedService = el.dataset.service;
+        isLatestMode = false;
+        latestFilterDate = null;
         breadcrumbEl.textContent = el.dataset.path;
         applyFilters();
       }
@@ -487,11 +505,20 @@
       // ── Filter ──
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
+        if (isLatestMode && !q) {
+          latestFilterDate = null;
+          for (var i = 0; i < allItems.length; i++) {
+            var d = allItems[i].date;
+            if (d && (!latestFilterDate || d > latestFilterDate)) latestFilterDate = d;
+          }
+          if (latestFilterDate) breadcrumbEl.textContent = 'latest / ' + latestFilterDate;
+        }
         currentFiltered = allItems.filter(function (item) {
-          // search is always global; service filter only applies when not searching
+          // search is always global; service/latest filters only apply when not searching
           var matchesService = q ? true : (!selectedService || item.source === selectedService);
+          var matchesLatest  = q ? true : (!latestFilterDate || item.date === latestFilterDate);
           var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
-          return matchesService && matchesSearch;
+          return matchesService && matchesLatest && matchesSearch;
         });
         feedInnerEl.innerHTML = '';
         renderedCount = 0;
@@ -522,6 +549,7 @@
       // ── Expose to inline onclick attrs ──
       window.toggleFolder  = toggleFolder;
       window.selectAll     = selectAll;
+      window.selectLatest  = selectLatest;
       window.selectService = selectService;
       window.toggleModal   = toggleModal;
       window.handleOverlayClick = handleOverlayClick;

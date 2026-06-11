@@ -63,3 +63,10 @@ Regina Police Service,https://www.reginapolice.ca/news/,h3 a,.elementor-post-dat
 Toronto Police Service,https://www.tps.ca/media-centre/news-releases/,,,Ontario,active,
 York Regional Police,https://www.yrp.ca/news-and-media/media-centre/latest-media-releases,h2 a,.teaser-date,Ontario,active,
 Waterloo Regional Police Service,https://wrps.ca/news/news-release,a.mht-card-media__title,.mht-date,Ontario,active,
+Kingston Police,https://www.kingstonpolice.ca/news/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,active,
+Niagara Regional Police Service,https://www.nrps.com/news-media/media-releases/,a.gs-feed-list-title,.gs-feed-list-author-date,Ontario,blocked,SSL SNI error (TLSV1_UNRECOGNIZED_NAME) — server-side misconfiguration
+Thunder Bay Police Service,https://www.thunderbaypolice.ca/news,div.postTitle a,.authorBar span:last-child,Ontario,active,
+Saint John Police Force,https://www.saintjohnpolice.ca/media-releases/,h3.elementor-post__title a,.elementor-post-date,New Brunswick,active,
+Moose Jaw Police Service,https://mjpolice.ca/news/,h3 a,time,Saskatchewan,active,
+Surrey Police Service,https://www.surreypolice.ca/news-releases,"a[href^=""/news-events/news/""]",span.field-content,British Columbia,active,
+Royal Newfoundland Constabulary,https://www.rnc.gov.nl.ca/news/,table.dataTable td a,td:nth-child(2),Newfoundland and Labrador,active,
