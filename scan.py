@@ -511,6 +511,9 @@ def clean_content(text: str, title: str = "") -> str:
     # Strip RCMP leading "- \n\t\t\t..." artefact (CMS list-item prefix with tab indent)
     text = _re.sub(r"^-[ \t]*\n[\t]+", "", text)
 
+    # Strip PEI/Charlottetown WordPress leading "|\nNews Releases\n" nav artefact
+    text = _re.sub(r"^\|\n(?:News Releases\n)?", "", text)
+
     # Strip RCMP "On this page" nav block (e.g. "On this page\nContent\nContent\n"
     # or with Image gallery / Contacts / Downloads labels in any order)
     text = _re.sub(
