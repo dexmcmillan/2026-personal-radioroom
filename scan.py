@@ -280,6 +280,7 @@ def extract_links(soup: BeautifulSoup, base_url: str) -> list[dict]:
 # Sites that use JS rendering and can't be scraped for content via static HTML.
 _JS_RENDERED_HOSTS = {
     "www.opp.ca",
+    "saintjohnpolice.ca",
 }
 
 
