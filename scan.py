@@ -620,6 +620,41 @@ def fetch_release_content(url: str) -> str | None:
     return None
 
 
+TPS_RSS_URL = "https://www.tps.ca/media-centre/news-releases/rss/"
+
+
+def fetch_tps_items() -> list[dict]:
+    """
+    Fetch Toronto Police Service news releases via their Atom feed.
+
+    tps.ca is behind Cloudflare bot protection that blocks plain requests and
+    even Playwright stealth. curl_cffi impersonates Chrome's TLS fingerprint
+    at the network layer, which bypasses the challenge.
+    """
+    import xml.etree.ElementTree as ET
+    from curl_cffi import requests as cffi_requests
+
+    resp = cffi_requests.get(TPS_RSS_URL, impersonate="chrome124", timeout=20)
+    resp.raise_for_status()
+    root = ET.fromstring(resp.text)
+    ns = {"atom": "http://www.w3.org/2005/Atom"}
+    results = []
+    for entry in root.findall("atom:entry", ns):
+        title = (entry.findtext("atom:title", "", ns) or "").strip()
+        link_el = entry.find("atom:link", ns)
+        url = link_el.get("href", "").strip() if link_el is not None else ""
+        published = (entry.findtext("atom:published", "", ns) or "")[:10] or None
+        summary_html = entry.findtext("atom:summary", "", ns) or ""
+        content = None
+        if summary_html:
+            content = BeautifulSoup(summary_html, "html.parser").get_text(separator="\n", strip=True)
+            if len(content) < 20:
+                content = None
+        if title and url:
+            results.append({"title": title, "url": url, "date": published, "content": content})
+    return results
+
+
 OPP_API_URL = "https://www.opp.ca/protonapi/entry/list/"
 OPP_NEWS_BASE = "https://www.opp.ca/news/viewnews/"
 
@@ -1060,7 +1095,9 @@ def scrape_site(
     from urllib.parse import urljoin, urlparse
     try:
         # Special cases: sites that require custom fetching
-        if "opp.ca" in url:
+        if "tps.ca" in url:
+            raw_links = fetch_tps_items()
+        elif "opp.ca" in url:
             raw_links = fetch_opp_items()
         elif "rcmp.ca" in url:
             raw_links = fetch_rcmp_items()
