@@ -115,6 +115,10 @@ def normalize_date(date_str: str | None) -> str | None:
     # Strip ordinal suffixes: "23rd" -> "23", "4th" -> "4", "1st" -> "1"
     import re as _re
     date_str = _re.sub(r"(\d+)(st|nd|rd|th)\b", r"\1", date_str.strip())
+    # Strip leading day-of-week: "Thursday June 11 2026, 8am" -> "June 11 2026, 8am"
+    date_str = _re.sub(r"^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+", "", date_str)
+    # Strip trailing time: "June 11 2026, 8am" -> "June 11 2026"
+    date_str = _re.sub(r",?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)$", "", date_str.strip())
     # Human-readable formats
     for fmt in ("%b %d, %Y", "%B %d, %Y", "%d %B %Y", "%B %d %Y", "%b %d %Y", "%b-%d-%Y", "%b-%m-%Y"):
         try:
@@ -488,6 +492,9 @@ def clean_content(text: str, title: str = "") -> str:
     # Strip leading category/city header fragments from Elementor "read more" widgets
     # Handles: "City\nCity…\n" and "City| Category\nCity…\n"
     text = _re.sub(r"^([A-Za-z][A-Za-z ]{0,29})(?:\| [^\n]*)?\n\1[…\.]+\n", "", text)
+
+    # Strip RCMP leading "- \n\t\t\t..." artefact (CMS list-item prefix with tab indent)
+    text = _re.sub(r"^-[ \t]*\n[\t]+", "", text)
 
     # Strip RCMP "On this page" nav block (e.g. "On this page\nContent\nContent\n"
     # or with Image gallery / Contacts / Downloads labels in any order)
