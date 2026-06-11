@@ -922,7 +922,7 @@
       <p>TGAM Radio Room monitors 68 Canadian police services and automatically collects press releases as they are published. The archive is rebuilt roughly every hour via a scheduled GitHub Actions workflow.</p>
       <p>Use the sidebar to browse by province or service. The search bar filters across all releases regardless of sidebar selection.</p>
       <p>This is an internal Globe and Mail tool. For feature requests or to suggest services to add, contact <a href="mailto:dmcmillan@globeandmail.com" style="color:#58a6ff;">dmcmillan@globeandmail.com</a>.</p>
-      <p>Updated: June 11, 2026 at 15:41 EDT</p>
+      <p>Updated: June 11, 2026 at 15:48 EDT</p>
     </div>
   </div>
 
@@ -1087,6 +1087,7 @@
       // ── Filter ──
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
+        var terms = q ? q.split(/\s+/).filter(Boolean) : [];
         if (isLatestMode && !q) {
           latestFilterDate = null;
           for (var i = 0; i < allItems.length; i++) {
@@ -1099,7 +1100,8 @@
           // search is always global; service/latest filters only apply when not searching
           var matchesService = q ? true : (!selectedService || item.source === selectedService);
           var matchesLatest  = q ? true : (!latestFilterDate || item.date === latestFilterDate);
-          var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
+          var text = getSearchText(item);
+          var matchesSearch  = terms.length === 0 || terms.every(function (t) { return text.indexOf(t) !== -1; });
           return matchesService && matchesLatest && matchesSearch;
         });
         feedInnerEl.innerHTML = '';

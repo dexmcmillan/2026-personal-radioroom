@@ -508,6 +508,7 @@
       // ── Filter ──
       function applyFilters() {
         var q = searchEl.value.toLowerCase().trim();
+        var terms = q ? q.split(/\s+/).filter(Boolean) : [];
         if (isLatestMode && !q) {
           latestFilterDate = null;
           for (var i = 0; i < allItems.length; i++) {
@@ -520,7 +521,8 @@
           // search is always global; service/latest filters only apply when not searching
           var matchesService = q ? true : (!selectedService || item.source === selectedService);
           var matchesLatest  = q ? true : (!latestFilterDate || item.date === latestFilterDate);
-          var matchesSearch  = !q || getSearchText(item).indexOf(q) !== -1;
+          var text = getSearchText(item);
+          var matchesSearch  = terms.length === 0 || terms.every(function (t) { return text.indexOf(t) !== -1; });
           return matchesService && matchesLatest && matchesSearch;
         });
         feedInnerEl.innerHTML = '';
