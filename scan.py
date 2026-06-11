@@ -121,12 +121,13 @@ def normalize_date(date_str: str | None) -> str | None:
     date_str = _re.sub(r"^(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday)\s+", "", date_str)
     # Strip trailing time: "June 11 2026, 8am" -> "June 11 2026"
     date_str = _re.sub(r",?\s+\d{1,2}(?::\d{2})?\s*(?:am|pm|AM|PM)$", "", date_str.strip())
-    # Human-readable formats
+    # Human-readable formats — try original case and title-cased (handles "05 march 2026")
     for fmt in ("%b %d, %Y", "%B %d, %Y", "%d %B %Y", "%B %d %Y", "%b %d %Y", "%b-%d-%Y", "%b-%m-%Y"):
-        try:
-            return datetime.strptime(date_str.strip()[:20], fmt).date().isoformat()
-        except ValueError:
-            continue
+        for candidate in (date_str.strip()[:20], date_str.strip()[:20].title()):
+            try:
+                return datetime.strptime(candidate, fmt).date().isoformat()
+            except ValueError:
+                continue
     # DD.MM.YY format (e.g. "09.06.26" from MHPS)
     m = _re.match(r"^(\d{2})\.(\d{2})\.(\d{2})$", date_str.strip())
     if m:
@@ -395,7 +396,9 @@ _NOISE_LINES_EXACT = frozenset({
     # Social media nav
     "x", "twitter", "facebook", "instagram", "youtube", "linkedin", "tiktok", "snapchat",
     # UI buttons
-    "menu", "search", "print this page", "subscribe", "email", "more",
+    "menu", "search", "print this page", "subscribe", "email", "more", "share",
+    # TPS/website link qualifiers (appear as text from accessibility labels)
+    "(opens in new window)", "(opens a print window)",
     # Alert/compat banners
     "close alert banner", "close old browser notification", "browser compatibility notification",
     "skip to content",
@@ -406,7 +409,7 @@ _NOISE_LINES_EXACT = frozenset({
     "back to news search", "back to search",
     "subscribe to news", "subscribe to this page",
     # CMS category/section labels (standalone)
-    "media release", "media releases",
+    "media release", "media releases", "news release", "news releases",
     "general releases", "public advisories", "police media releases",
     # Archive nav
     "see more",
@@ -431,6 +434,9 @@ _NOISE_LINE_PATTERNS = [
     re.compile(r'^As a result, parts of the site may not function'),
     re.compile(r'^We recommend updating your browser'),
     re.compile(r'^Published on:\s'),                     # Barrie/WordPress "Published on: date | Categories:"
+    re.compile(r'^Unit:\s*$'),                           # TPS article header label
+    re.compile(r'^Case #:'),                             # TPS case number line
+    re.compile(r'^Published:\s+\w+day,'),                # TPS "Published: Thursday, ..." line
 ]
 
 _CONTENT_FOOTER_MARKERS = (
@@ -462,6 +468,13 @@ def clean_content(text: str, title: str = "") -> str:
     the card UI). Also strips common footer sections.
     """
     import re as _re
+
+    # Strip TPS article header block up to "Share / (opens in new window)" marker.
+    # Must run FIRST before noise-line removal strips parts of the marker string.
+    _tps_marker = "\nShare\n(opens in new window)\n"
+    _idx = text.find(_tps_marker)
+    if 0 <= _idx < 600:
+        text = text[_idx + len(_tps_marker):]
 
     lines = text.split("\n")
     cleaned = []
@@ -554,6 +567,9 @@ def clean_content(text: str, title: str = "") -> str:
 
     # Strip Calgary PressPoint attachment filename lines (e.g. "CA26249031_\nCA26249031.JPG_")
     text = _re.sub(r"\n[A-Za-z0-9 ._-]+_(\n|$)", "\n", text)
+
+    # Normalize non-breaking spaces (HTML &nbsp; artifacts from CMS table layouts)
+    text = text.replace("\xa0", " ")
 
     text = _re.sub(r"\n{3,}", "\n\n", text)
     # Collapse runs of spaces/tabs (CMS layout artefacts from table/float-based HTML)
@@ -649,6 +665,9 @@ def fetch_tps_items() -> list[dict]:
         summary_html = entry.findtext("atom:summary", "", ns) or ""
         content = None
         if summary_html:
+            import html as _html
+            # Atom summary is HTML-entity-encoded HTML (double-encoded from feed) — decode once
+            summary_html = _html.unescape(summary_html)
             content = BeautifulSoup(summary_html, "html.parser").get_text(separator="\n", strip=True)
             if len(content) < 20:
                 content = None

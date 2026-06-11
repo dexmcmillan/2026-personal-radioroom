@@ -410,6 +410,7 @@
         selectedService = null;
         isLatestMode = false;
         latestFilterDate = null;
+        searchEl.value = '';
         breadcrumbEl.textContent = 'all';
         applyFilters();
       }
@@ -420,6 +421,7 @@
         selectedService = null;
         isLatestMode = true;
         latestFilterDate = null;
+        searchEl.value = '';
         breadcrumbEl.textContent = 'latest';
         applyFilters();
       }
@@ -430,6 +432,7 @@
         selectedService = el.dataset.service;
         isLatestMode = false;
         latestFilterDate = null;
+        searchEl.value = '';
         breadcrumbEl.textContent = el.dataset.path;
         applyFilters();
       }
