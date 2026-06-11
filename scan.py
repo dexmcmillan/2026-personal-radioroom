@@ -489,11 +489,14 @@ def clean_content(text: str, title: str = "") -> str:
     # Handles: "City\nCity…\n" and "City| Category\nCity…\n"
     text = _re.sub(r"^([A-Za-z][A-Za-z ]{0,29})(?:\| [^\n]*)?\n\1[…\.]+\n", "", text)
 
-    # Strip RCMP header: everything up to and including "On this page\nContent\nContacts\nContent\n"
-    _rcmp_marker = "On this page\nContent\nContacts\nContent\n"
-    _rcmp_idx = text.find(_rcmp_marker)
-    if 0 <= _rcmp_idx < 500:
-        text = text[_rcmp_idx + len(_rcmp_marker):]
+    # Strip RCMP "On this page" nav block (e.g. "On this page\nContent\nContent\n"
+    # or with Image gallery / Contacts / Downloads labels in any order)
+    text = _re.sub(
+        r"On this page\n(?:(?:Content|Image gallery|Contacts|Downloads?|Videos?)\n)+",
+        "",
+        text,
+        count=1,
+    )
 
     # Strip VPD-style byline: Author\nISO-timestamp\nDate\n|\nCategory\n|
     text = _re.sub(
