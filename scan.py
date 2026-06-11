@@ -1202,10 +1202,10 @@ def build_feed(
     et_label = now_et.strftime("%Z")
     generated_at = now_et.strftime(f"%B %d, %Y at %H:%M {et_label}")
 
-    raw_provinces: dict[str, list[str]] = {}
+    raw_provinces: dict[str, set[str]] = {}
     for src in load_sources():
         prov = src.get("province") or "Other"
-        raw_provinces.setdefault(prov, []).append(src["name"])
+        raw_provinces.setdefault(prov, set()).add(src["name"])
 
     provinces: dict[str, list[str]] = {}
     for prov in _PROVINCE_ORDER:
