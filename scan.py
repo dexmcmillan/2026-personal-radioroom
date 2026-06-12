@@ -34,6 +34,10 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36"
 )
 
+# Cache for CK daily stats extracted during fetch, keyed by release URL.
+# Stored separately so clean_content() cannot accidentally strip them.
+_ck_stats_cache: dict[str, str] = {}
+
 # --- Core utilities ---
 
 
@@ -337,20 +341,36 @@ def split_ck_daily_release(item: dict) -> list[dict]:
     # Also handle "Type –\nCKxxxx"
     normalized = _re.sub(r"[–\-]\n(CK\d+)", r"– \1", normalized)
 
-    # Incident header: "Some Incident Type – CKxxxxxxxx" at start of a line
-    pattern = _re.compile(r"^(.{3,80}?)\s*[–\-]\s*(CK\d+(?:/CK\d+)*)", _re.MULTILINE)
+    # Incident header — two formats seen in the wild:
+    #   Old: "Incident Type – CKxxxxxxxx"   (groups 1, 2)
+    #   New: "CKxxxxxxxx – Incident Type"   (groups 3, 4)
+    pattern = _re.compile(
+        r"^(?:"
+        r"(.{3,80}?)\s*[–\-]\s*(CK\d+(?:/CK\d+)*)"   # old: type – CK
+        r"|"
+        r"(CK\d+(?:/CK\d+)*)\s*[–\-]\s*(.{3,80})"    # new: CK – type
+        r")",
+        _re.MULTILINE,
+    )
     matches = list(pattern.finditer(normalized))
 
     if not matches:
         return [item]
 
+    # Retrieve the daily stats line cached by fetch_release_content() for this URL.
+    # clean_content() strips it from the body text, so we preserve it here separately.
+    stats_line = _ck_stats_cache.get(url)
+
     results = []
     for i, m in enumerate(matches):
-        incident_type = m.group(1).strip()
-        case_num = m.group(2).strip()
+        # Support both old (type–CK) and new (CK–type) formats
+        incident_type = (m.group(1) or m.group(4) or "").strip()
+        case_num = (m.group(2) or m.group(3) or "").strip()
         start = m.start()
         end = matches[i + 1].start() if i + 1 < len(matches) else len(normalized)
         block = normalized[start:end].strip()
+        if stats_line:
+            block = stats_line + "\n\n" + block
 
         # Try to extract the actual incident date from "Date: Month D, YYYY"
         date_match = _re.search(r"Date:\s+([A-Za-z]+ \d{1,2},?\s*\d{4})", block)
@@ -478,6 +498,13 @@ def clean_content(text: str, title: str = "") -> str:
     if 0 <= _idx < 600:
         text = text[_idx + len(_tps_marker):]
 
+    # Strip SPVM full-site navigation block that precedes press release content.
+    # The nav always ends with the "Vidéos" menu item before the article begins.
+    _spvm_marker = "\nVidéos\n"
+    _idx = text.find(_spvm_marker)
+    if 0 <= _idx < 2000:
+        text = text[_idx + len(_spvm_marker):]
+
     lines = text.split("\n")
     cleaned = []
     for line in lines:
@@ -533,16 +560,17 @@ def clean_content(text: str, title: str = "") -> str:
     )
 
     # Strip GovDelivery/CivicPlus byline block that follows the title:
-    #   "By\n[Service Name]\n-\n[Date]\n[optional category lines]"
+    #   "By\n[Service Name]\n-\n[Date]\n[optional short category lines]"
     # Also handles the no-"By" variant: "-\n[Date]\n[category]"
+    # Category lines are short (≤60 chars); real content sentences are much longer.
     text = _re.sub(
-        r"^(?:By\n[^\n]+\n)?-\n[^\n]+\n(?:[^\n]+\n){0,2}",
+        r"^(?:By\n[^\n]+\n)?-\n[^\n]+\n(?:[^\n]{1,60}\n){0,2}",
         "",
         text,
     )
     # Strip any orphaned date or CMS file-number lines left after byline removal
     text = _re.sub(
-        r"^(?:[A-Z][a-z]+ \d{1,2},?\s+\d{4}\n|\d{2}-\d{5,}\n)+",
+        r"^(?:[A-Z][a-z]+ \d{1,2},?\s+\d{4}\n|\d{1,2} [A-Za-z]+ \d{4}\n|\d{2}-\d{5,}\n)+",
         "",
         text,
     )
@@ -612,6 +640,19 @@ def fetch_release_content(url: str) -> str | None:
     # Remove noisy tags before extracting text
     for tag in soup(["script", "style", "nav", "header", "footer", "form", "noscript", "aside"]):
         tag.decompose()
+
+    # CK-specific: extract and format the daily statistics table. Store in the
+    # module-level cache keyed by URL so split_ck_daily_release() can retrieve
+    # it after clean_content() has run (which would otherwise strip the stats).
+    if host == "ckpolice.com":
+        stats_table = soup.select_one("table.has-fixed-layout")
+        if stats_table:
+            cells = [" ".join(td.get_text(separator=" ", strip=True).split())
+                     for td in stats_table.find_all("td")]
+            cells = [c for c in cells if c]
+            if cells:
+                _ck_stats_cache[url] = " | ".join(cells)
+            stats_table.decompose()
 
     # Try progressively broader containers until we find something with real text
     selectors = [
