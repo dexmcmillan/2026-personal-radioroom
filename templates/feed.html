@@ -36,17 +36,11 @@
       flex-shrink: 0;
     }
     .topbar-title {
-      font-size: 0.85rem;
-      font-weight: 700;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      color: #e6edf3;
-      white-space: nowrap;
-    }
-    .topbar-live {
       font-size: 0.68rem;
-      color: #3fb950;
+      font-weight: 700;
       letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #3fb950;
       white-space: nowrap;
     }
     #search {
@@ -290,7 +284,6 @@
   <div class="topbar">
     <div class="topbar-dot"></div>
     <span class="topbar-title">TGAM Radio Room</span>
-    <span class="topbar-live">● LIVE</span>
     <input id="search" type="search" placeholder="search_" autocomplete="off">
     <span class="topbar-spacer"></span>
     <span id="clock"></span>
@@ -366,13 +359,23 @@
       var isLatestMode = false;
       var latestFilterDate = null;
 
-      // ── Clock ──
-      function tick() {
+      // ── Countdown to next scrape (noon UTC, weekdays) ──
+      function nextScrapeTime() {
         var now = new Date();
-        clockEl.textContent = now.toTimeString().slice(0, 8);
+        var next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 12, 0, 0));
+        if (next <= now) next.setUTCDate(next.getUTCDate() + 1);
+        while (next.getUTCDay() === 0 || next.getUTCDay() === 6) next.setUTCDate(next.getUTCDate() + 1);
+        return next;
       }
-      setInterval(tick, 1000);
-      tick();
+      function tickCountdown() {
+        var diff = Math.max(0, nextScrapeTime() - Date.now());
+        var h = Math.floor(diff / 3600000);
+        var m = Math.floor(diff % 3600000 / 60000);
+        var s = Math.floor(diff % 60000 / 1000);
+        clockEl.textContent = 'Updated in: ' + h + 'h ' + String(m).padStart(2,'0') + 'm ' + String(s).padStart(2,'0') + 's';
+      }
+      setInterval(tickCountdown, 1000);
+      tickCountdown();
 
       // ── Info modal ──
       function toggleModal(open) {
