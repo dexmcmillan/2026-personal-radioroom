@@ -372,7 +372,7 @@
         var h = Math.floor(diff / 3600000);
         var m = Math.floor(diff % 3600000 / 60000);
         var s = Math.floor(diff % 60000 / 1000);
-        clockEl.textContent = 'Updated in: ' + h + 'h ' + String(m).padStart(2,'0') + 'm ' + String(s).padStart(2,'0') + 's';
+        clockEl.textContent = 'Next update: ' + h + 'h ' + String(m).padStart(2,'0') + 'm ' + String(s).padStart(2,'0') + 's';
       }
       setInterval(tickCountdown, 1000);
       tickCountdown();
