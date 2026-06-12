@@ -491,6 +491,9 @@ _CONTENT_FOOTER_MARKERS = (
     "\nPrev\nPrevious\n",
     "\nMore News\n",
     "\n← Back\n",
+    # SPVM site-wide footer
+    "\ncommunicate\nwith the SPVM\n",
+    "\ncommunicate with the SPVM\n",
 )
 
 
