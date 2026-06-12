@@ -372,9 +372,20 @@ def split_ck_daily_release(item: dict) -> list[dict]:
         if stats_line:
             block = stats_line + "\n\n" + block
 
-        # Try to extract the actual incident date from "Date: Month D, YYYY"
+        # Try to extract the actual incident date from "Date: Month D, YYYY".
+        # Clamp to the release date if the parsed date is more than 30 days in
+        # the future — CK sometimes publishes typos like "July 11" for "June 11".
         date_match = _re.search(r"Date:\s+([A-Za-z]+ \d{1,2},?\s*\d{4})", block)
         incident_date = normalize_date(date_match.group(1)) if date_match else date
+        if incident_date and date:
+            from datetime import date as _date_type, timedelta
+            try:
+                parsed = _date_type.fromisoformat(incident_date)
+                release = _date_type.fromisoformat(date)
+                if parsed > release + timedelta(days=30):
+                    incident_date = date
+            except ValueError:
+                pass
 
         results.append({
             "title": f"{incident_type} ({case_num})",
