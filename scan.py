@@ -487,6 +487,10 @@ _CONTENT_FOOTER_MARKERS = (
     "\nReport A Crime\nThe work we do",
     "\nMedia Officer\n",
     "\nEmail. Media Officer\n",
+    # Regina/Elementor WordPress pagination nav
+    "\nPrev\nPrevious\n",
+    "\nMore News\n",
+    "\n← Back\n",
 )
 
 
