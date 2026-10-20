@@ -1231,10 +1231,6 @@ def extract_links_title_from_heading(
     return results
 
 
-
-    return results
-
-
 def scrape_site(
     service_name: str,
     url: str,
